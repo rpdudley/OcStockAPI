@@ -1,60 +1,57 @@
-﻿using DatabaseProjectAPI.Entities.Settings;
+﻿using System;
+using System.Net.Http;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json.Linq;
+using DatabaseProjectAPI.Entities;
+using DatabaseProjectAPI.Entities.Settings;
 
-namespace DatabaseProjectAPI.Services;
-
-public interface IAlphaVantageService
+namespace DatabaseProjectAPI.Services
 {
-    Task<decimal> GetStockQuote(string symbol);
-}
-
-public class AlphaVantageService : IAlphaVantageService
-{
-    private readonly HttpClient _httpClient;
-    private readonly string _apiKey;
-
-    public AlphaVantageService(HttpClient httpClient, IOptions<AlphaVantageSettings> settings)
+    public interface IAlphaVantageService
     {
-        _httpClient = httpClient;
-        _apiKey = settings.Value.ApiKey;
+        Task<(decimal Open, decimal Price, long Volume, DateTime LatestTradingDay)> GetStockQuote(string symbol);
     }
 
-    public async Task<decimal> GetStockQuote(string symbol)
+    public class AlphaVantageService : IAlphaVantageService
     {
-        try
+        private readonly HttpClient _httpClient;
+        private readonly string _apiKey;
+
+        public AlphaVantageService(HttpClient httpClient, IOptions<AlphaVantageSettings> settings)
+        {
+            _httpClient = httpClient;
+            _apiKey = settings.Value.ApiKey;
+        }
+
+        public async Task<(decimal Open, decimal Price, long Volume, DateTime LatestTradingDay)> GetStockQuote(string symbol)
         {
             string requestUrl = $"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={_apiKey}";
-
             HttpResponseMessage response = await _httpClient.GetAsync(requestUrl);
 
             if (response.IsSuccessStatusCode)
             {
-                // Parse the JSON response
                 string jsonResponse = await response.Content.ReadAsStringAsync();
-                JObject quoteData = JObject.Parse(jsonResponse);
 
-                // Extract the "05. price" field (latest price)
-                string lastPriceStr = quoteData["Global Quote"]?["02. open"]?.ToString();
+                var alphaVantageResponse = JsonConvert.DeserializeObject<AlphaVantageResponse>(jsonResponse);
+                var quote = alphaVantageResponse?.GlobalQuote;
 
-                if (decimal.TryParse(lastPriceStr, out decimal lastPrice))
+                if (quote == null)
                 {
-                    return lastPrice;
+                    throw new Exception("Failed to retrieve stock quote data.");
                 }
-                else
-                {
-                    throw new Exception("Unable to parse stock quote price.");
-                }
+
+                decimal open = quote.Open;
+                decimal price = quote.Price;
+                long volume = quote.Volume;
+                DateTime latestTradingDay = quote.LatestTradingDay;
+
+                return (open, price, volume, latestTradingDay);
             }
             else
             {
                 throw new Exception($"Stock quote request unsuccessful. Status code: {response.StatusCode}");
             }
         }
-        catch (Exception ex)
-        {
-            throw new Exception($"Stock quote retrieval issue: {ex.Message}");
-        }
     }
 }
-
