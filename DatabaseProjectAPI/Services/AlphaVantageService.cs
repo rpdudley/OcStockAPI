@@ -24,7 +24,7 @@ namespace DatabaseProjectAPI.Services
             _apiKey = settings.Value.ApiKey;
         }
 
-        public async Task<(decimal Open, decimal Price, long Volume, DateTime LatestTradingDay)> GetStockQuote(string symbol)
+        public async Task<(decimal Open, decimal Price, long Volume, DateTime LatestTradingDay)> GetStockQuote(string symbol)//string symbol ONLY VALID STOCK SYMBOLS ARE USED
         {
             string requestUrl = $"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={_apiKey}";
             HttpResponseMessage response = await _httpClient.GetAsync(requestUrl);

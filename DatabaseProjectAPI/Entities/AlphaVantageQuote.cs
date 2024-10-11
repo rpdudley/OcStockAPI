@@ -8,6 +8,7 @@ namespace DatabaseProjectAPI.Entities
         public GlobalQuote GlobalQuote { get; set; }
     }
 
+    //This is what is mapping out the json properties this is set by the alpha vantage api, you can add any poperties to the action in services folder to get more resuilts back 
     public class GlobalQuote
     {
         [JsonProperty("01. symbol")]
