@@ -1,55 +1,56 @@
-﻿using DatabaseProjectAPI.Entities.Settings;
-using Microsoft.AspNetCore.Mvc;
+﻿using System;
+using System.Net.Http;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using Newtonsoft.Json;
 using Microsoft.Extensions.Options;
-using NewsAPI.Constants;
-using NewsAPI.Models;
-using NewsAPI;
+using DatabaseProjectAPI.Entities.Settings;
+using DatabaseProjectAPI.Entities;
 
-namespace DatabaseProjectAPI.Services;
-
-public interface INewsAPIService
+namespace DatabaseProjectAPI.Services
 {
-
-}
-public class NewsAPIService : INewsAPIService
-{
-    private readonly HttpClient _httpClient;
-    private readonly string _apiKey;
-    public NewsAPIService(HttpClient httpClient, IOptions<NewsSettings> settings)
+    public interface INewsAPIService
     {
-        _httpClient = httpClient;
-        _apiKey = settings.Value.ApiKey;
+        Task<List<Article>> GetNewsDataAsync(string name, DateTime from, DateTime to);
     }
-    static void Main(string[] args)
+        public class NewsAPIService : INewsAPIService
     {
-        // init with your API key
-        var newsApiClient = new NewsApiClient("e53d610ddd864bb7aab618a7f0e5f0d4");
-        var articlesResponse = newsApiClient.GetEverything(new EverythingRequest
+        private readonly HttpClient _httpClient;
+        private readonly string _apiKey;
+
+        public NewsAPIService(HttpClient httpClient, IOptions<NewsSettings> settings)
         {
-            Q = "Apple",
-            SortBy = SortBys.Popularity,
-            Language = Languages.EN,
-            From = new DateTime(2018, 1, 25)
-        });
-        if (articlesResponse.Status == Statuses.Ok)
+            _httpClient = httpClient;
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", "RyanStockApp/1.0");
+            _apiKey = settings.Value.ApiKey;
+        }
+
+
+        public async Task<List<Article>> GetNewsDataAsync(string name, DateTime from, DateTime to)
         {
-            // total results found
-            Console.WriteLine(articlesResponse.TotalResults);
-            // here's the first 20
-            foreach (var article in articlesResponse.Articles)
+            string fromDate = from.ToString("yyyy-MM-dd");
+            string toDate = to.ToString("yyyy-MM-dd");
+
+            var url = $"https://newsapi.org/v2/everything?q={name}&from={fromDate}&to={toDate}&sortBy=popularity&apiKey={_apiKey}";
+
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("User-Agent", "RyanStockApp/1.0");
+
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
             {
-                // title
-                Console.WriteLine(article.Title);
-                // author
-                Console.WriteLine(article.Author);
-                // description
-                Console.WriteLine(article.Description);
-                // url
-                Console.WriteLine(article.Url);
-                // published at
-                Console.WriteLine(article.PublishedAt);
+                //fix this to change from raw json
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+
+                var articlesResponse = JsonConvert.DeserializeObject<NewsApiResponse>(jsonResponse);
+                return articlesResponse?.Articles ?? new List<Article>();
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"Request to News API failed with status code: {response.StatusCode}, Content: {errorContent}");
             }
         }
-        Console.ReadLine();
     }
 }

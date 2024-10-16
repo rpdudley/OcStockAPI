@@ -15,6 +15,7 @@ builder.Configuration
 
 builder.Services.Configure<FinnhubSettings>(builder.Configuration.GetSection("Finnhub"));
 builder.Services.Configure<AlphaVantageSettings>(builder.Configuration.GetSection("AlphaVantage"));
+builder.Services.Configure<NewsSettings>(builder.Configuration.GetSection("NewsAPI"));
 
 //builder.Services.AddSingleton<(builder.Services.GetRe)>
 
@@ -23,6 +24,7 @@ builder.Services.AddHttpClient<IAlphaVantageService, AlphaVantageService>();
 
 builder.Services.AddTransient<IFinnhubService, FinnhubService>();
 builder.Services.AddTransient<IAlphaVantageService, AlphaVantageService>();
+builder.Services.AddTransient<INewsAPIService, NewsAPIService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
