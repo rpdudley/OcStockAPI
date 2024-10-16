@@ -20,7 +20,6 @@
 
   <ItemGroup>
     <Folder Include="Actions\" />
-    <Folder Include="DataContext\" />
     <Folder Include="Helpers\" />
     <Folder Include="DTO\" />
   </ItemGroup>
