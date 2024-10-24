@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Options;
 using DatabaseProjectAPI.Entities;
-using DatabaseProjectAPI.Entities.Settings;
+using KubsConnect.Settings;
 
 namespace DatabaseProjectAPI.Services
 {
@@ -18,10 +18,10 @@ namespace DatabaseProjectAPI.Services
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
 
-        public AlphaVantageService(HttpClient httpClient, IOptions<AlphaVantageSettings> settings)
+        public AlphaVantageService(HttpClient httpClient, AlphaVantageSettings settings)
         {
             _httpClient = httpClient;
-            _apiKey = settings.Value.ApiKey;
+            _apiKey = settings.ApiKey;
         }
 
         public async Task<(string Symbol, decimal Open, decimal Price, long Volume, DateTime LatestTradingDay)> GetStockQuote(string symbol)

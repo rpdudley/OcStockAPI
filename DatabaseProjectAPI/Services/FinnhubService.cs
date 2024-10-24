@@ -2,7 +2,7 @@
 using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
-using DatabaseProjectAPI.Entities.Settings;
+using KubsConnect.Settings;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
@@ -21,10 +21,10 @@ namespace DatabaseProjectAPI.Services
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
 
-        public FinnhubService(HttpClient httpClient, IOptions<FinnhubSettings> settings)
+        public FinnhubService(HttpClient httpClient, FinnhubSettings settings)
         {
             _httpClient = httpClient;
-            _apiKey = settings.Value.ApiKey;
+            _apiKey = settings.ApiKey;
         }
 
         public async Task<JObject> GetStockDataAsync(string symbol, DateTime fromDate, DateTime toDate)

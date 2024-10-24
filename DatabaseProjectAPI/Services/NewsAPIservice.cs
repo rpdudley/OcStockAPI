@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Options;
-using DatabaseProjectAPI.Entities.Settings;
+using KubsConnect.Settings;
 using DatabaseProjectAPI.Entities;
 
 namespace DatabaseProjectAPI.Services
@@ -18,11 +18,11 @@ namespace DatabaseProjectAPI.Services
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
 
-        public NewsAPIService(HttpClient httpClient, IOptions<NewsSettings> settings)
+        public NewsAPIService(HttpClient httpClient, NewsSettings settings)
         {
             _httpClient = httpClient;
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "RyanStockApp/1.0");
-            _apiKey = settings.Value.ApiKey;
+            _apiKey = settings.ApiKey;
         }
 
 

@@ -1,7 +1,8 @@
 using DatabaseProjectAPI.Actions;
 using DatabaseProjectAPI.DataContext;
-using DatabaseProjectAPI.Entities.Settings;
+using KubsConnect.Settings;
 using DatabaseProjectAPI.Services;
+using KubsConnect;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,16 +13,18 @@ builder.Configuration
     .AddEnvironmentVariables();
 
 // Configure settings
-builder.Services.Configure<FinnhubSettings>(builder.Configuration.GetSection("Finnhub"));
-builder.Services.Configure<AlphaVantageSettings>(builder.Configuration.GetSection("AlphaVantage"));
-builder.Services.Configure<NewsSettings>(builder.Configuration.GetSection("NewsAPI"));
+//builder.Services.Configure<FinnhubSettings>(builder.Configuration.GetSection("Finnhub"));
+//builder.Services.Configure<AlphaVantageSettings>(builder.Configuration.GetSection("AlphaVantage"));
+//builder.Services.Configure<NewsSettings>(builder.Configuration.GetSection("NewsAPI"));
+KubsClient client = new KubsClient(builder.Services, builder.Configuration, builder.Environment);
 
 // Configure DbContext
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+//var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<DpapiDbContext>(options =>
 {
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+    options.UseMySql(client.config.DBConnectionSettings.RyanWilliamDB, 
+        ServerVersion.AutoDetect(client.config.DBConnectionSettings.RyanWilliamDB));
 });
 
 // Register services
