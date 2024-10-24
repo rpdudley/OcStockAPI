@@ -1,4 +1,5 @@
-﻿using DatabaseProjectAPI.DataContext;
+﻿using DatabaseProjectAPI.Actions;
+using DatabaseProjectAPI.DataContext;
 using DatabaseProjectAPI.Entities;
 using DatabaseProjectAPI.Helpers;
 
@@ -14,7 +15,6 @@ namespace DatabaseProjectAPI.Services
             _serviceProvider = serviceProvider;
             _logger = logger;
         }
-
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("StockQuoteBackgroundService started at: {time}", DateTime.UtcNow);
@@ -27,8 +27,11 @@ namespace DatabaseProjectAPI.Services
                 {
                     var dbContext = scope.ServiceProvider.GetRequiredService<DpapiDbContext>();
                     var apiRequestLogger = scope.ServiceProvider.GetRequiredService<IApiRequestLogger>();
+                    var autoDeleteService = scope.ServiceProvider.GetRequiredService<IAutoDeleteService>();
 
-                    // Check if API call has already been made today for market open or close
+                    await autoDeleteService.DeleteOldStockHistory();
+                    await autoDeleteService.DeleteOldApiCallLogs();
+
                     if (IsMarketOpenTime(now) && !await apiRequestLogger.HasMadeApiCallToday("MarketOpen", "AAPL"))
                     {
                         await FetchAndSaveStockData(dbContext, apiRequestLogger, "MarketOpen", "AAPL");
@@ -38,8 +41,7 @@ namespace DatabaseProjectAPI.Services
                         await FetchAndSaveStockData(dbContext, apiRequestLogger, "MarketClose", "AAPL");
                     }
                 }
-
-                await Task.Delay(TimeSpan.FromMinutes(60), stoppingToken);  // Delay for 1 hour
+                await Task.Delay(TimeSpan.FromMinutes(60), stoppingToken);
             }
         }
         private async Task FetchAndSaveStockData(DpapiDbContext dbContext, IApiRequestLogger apiRequestLogger, string callType, string symbol)
