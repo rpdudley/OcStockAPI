@@ -7,16 +7,16 @@ WORKDIR /app
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["./DatabaseProjectAPI/DatabaseProjectAPI.csproj", "."]
-COPY ["./KubsConnect/KubsConnect.csproj", "."]
-RUN dotnet restore "./DatabaseProjectAPI.csproj"
+COPY ["./DatabaseProjectAPI/DatabaseProjectAPI.csproj", "DatabaseProjectAPI/"]
+COPY ["./KubsConnect/KubsConnect.csproj", "DatabaseProjectAPI/"]
+RUN dotnet restore "DatabaseProjectAPI/DatabaseProjectAPI.csproj"
 COPY . .
-WORKDIR "/src/."
-RUN dotnet build "./DatabaseProjectAPI.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/DatabaseProjectAPI"
+RUN dotnet build "DatabaseProjectAPI.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./DatabaseProjectAPI.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "DatabaseProjectAPI.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
