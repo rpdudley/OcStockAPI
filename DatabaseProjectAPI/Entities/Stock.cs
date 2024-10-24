@@ -4,6 +4,7 @@
     public class Stock
     {
         [Key]
+        [Column("stock_id")]
         public int StockId { get; set; }
         public string? Symbol { get; set; }
         public decimal OpenValue { get; set; }
