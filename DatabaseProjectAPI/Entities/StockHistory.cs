@@ -15,8 +15,8 @@
         [Column("closed_value")]
         public decimal ClosedValue { get; set; }
         [Column("Symbol")]
-        public string Symbol { get; set; }
+        public string? Symbol { get; set; }
         [ForeignKey("StockId")]
-        public Stock Stock { get; set; }
+        public Stock? Stock { get; set; }
     }
 }

@@ -3,6 +3,7 @@ using DatabaseProjectAPI.DataContext;
 using KubsConnect.Settings;
 using DatabaseProjectAPI.Services;
 using KubsConnect;
+using DatabaseProjectAPI.Helpers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +38,7 @@ builder.Services.AddTransient<INewsAPIService, NewsAPIService>();
 builder.Services.AddTransient<IInvestorAccountAction, InvestorAccountAction>();
 builder.Services.AddTransient<ITrackedStockAction, TrackedStockAction>();
 builder.Services.AddTransient<IStockHistoryAction, StockHistoryAction>();
+builder.Services.AddTransient<IApiRequestLogger, ApiRequestLogger>();
 
 // Register background service
 builder.Services.AddHostedService<StockQuoteBackgroundService>();
