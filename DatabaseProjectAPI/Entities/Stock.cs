@@ -5,7 +5,7 @@
     {
         [Key]
         public int StockId { get; set; }
-        public string Name { get; set; }
+        public string? Symbol { get; set; }
         public decimal OpenValue { get; set; }
         public decimal ClosingValue { get; set; }
         public long Volume { get; set; }

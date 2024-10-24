@@ -16,6 +16,8 @@ namespace DatabaseProjectAPI.DataContext
         DbSet<PortfolioStock> PortfolioStocks { get; set; }
         DbSet<EventStock> EventStocks { get; set; }
         DbSet<EventMutualFund> EventMutualFunds { get; set; }
+        DbSet<TrackedStock> TrackedStocks { get; set; }
+
     }
 
     public class DpapiDbContext : DbContext, IDpapiDbContext
@@ -35,7 +37,7 @@ namespace DatabaseProjectAPI.DataContext
         public DbSet<PortfolioStock> PortfolioStocks { get; set; }
         public DbSet<EventStock> EventStocks { get; set; }
         public DbSet<EventMutualFund> EventMutualFunds { get; set; }
-
+        public DbSet<TrackedStock> TrackedStocks { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

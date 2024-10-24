@@ -10,7 +10,7 @@ namespace DatabaseProjectAPI.Services
 {
     public interface IAlphaVantageService
     {
-        Task<(decimal Open, decimal Price, long Volume, DateTime LatestTradingDay)> GetStockQuote(string symbol);
+        Task<(string Symbol, decimal Open, decimal Price, long Volume, DateTime LatestTradingDay)> GetStockQuote(string symbol);
     }
 
     public class AlphaVantageService : IAlphaVantageService
@@ -24,7 +24,7 @@ namespace DatabaseProjectAPI.Services
             _apiKey = settings.Value.ApiKey;
         }
 
-        public async Task<(decimal Open, decimal Price, long Volume, DateTime LatestTradingDay)> GetStockQuote(string symbol)//string symbol ONLY VALID STOCK SYMBOLS ARE USED
+        public async Task<(string Symbol, decimal Open, decimal Price, long Volume, DateTime LatestTradingDay)> GetStockQuote(string symbol)
         {
             string requestUrl = $"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={_apiKey}";
             HttpResponseMessage response = await _httpClient.GetAsync(requestUrl);
@@ -41,17 +41,18 @@ namespace DatabaseProjectAPI.Services
                     throw new Exception("Failed to retrieve stock quote data.");
                 }
 
+                string retrievedSymbol = quote.Symbol;
                 decimal open = quote.Open;
                 decimal price = quote.Price;
                 long volume = quote.Volume;
                 DateTime latestTradingDay = quote.LatestTradingDay;
 
-                return (open, price, volume, latestTradingDay);
+                return (retrievedSymbol, open, price, volume, latestTradingDay);
             }
             else
             {
                 throw new Exception($"Stock quote request unsuccessful. Status code: {response.StatusCode}");
             }
         }
-    }
+    }    
 }

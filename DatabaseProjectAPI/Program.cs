@@ -8,14 +8,15 @@ var builder = WebApplication.CreateBuilder(args);
 // Load configuration sources
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-    .AddUserSecrets<Program>(optional: true) 
-    .AddEnvironmentVariables();             
+    .AddUserSecrets<Program>(optional: true)
+    .AddEnvironmentVariables();
 
+// Configure settings
 builder.Services.Configure<FinnhubSettings>(builder.Configuration.GetSection("Finnhub"));
 builder.Services.Configure<AlphaVantageSettings>(builder.Configuration.GetSection("AlphaVantage"));
 builder.Services.Configure<NewsSettings>(builder.Configuration.GetSection("NewsAPI"));
 
-
+// Configure DbContext
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<DpapiDbContext>(options =>
@@ -23,6 +24,7 @@ builder.Services.AddDbContext<DpapiDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
 });
 
+// Register services
 builder.Services.AddHttpClient<IFinnhubService, FinnhubService>();
 builder.Services.AddHttpClient<IAlphaVantageService, AlphaVantageService>();
 
@@ -30,6 +32,11 @@ builder.Services.AddTransient<IFinnhubService, FinnhubService>();
 builder.Services.AddTransient<IAlphaVantageService, AlphaVantageService>();
 builder.Services.AddTransient<INewsAPIService, NewsAPIService>();
 builder.Services.AddTransient<IInvestorAccountAction, InvestorAccountAction>();
+builder.Services.AddTransient<ITrackedStockAction, TrackedStockAction>();
+builder.Services.AddTransient<IStockHistoryAction, StockHistoryAction>();
+
+// Register background service
+builder.Services.AddHostedService<StockQuoteBackgroundService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

@@ -9,7 +9,7 @@
         public DateTime Timestamp { get; set; }
         public decimal OpenedValue { get; set; }
         public decimal ClosedValue { get; set; }
-
+        public string Symbol { get; set; }
         [ForeignKey("StockId")]
         public Stock Stock { get; set; }
     }

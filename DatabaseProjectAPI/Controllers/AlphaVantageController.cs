@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace DatabaseProjectAPI.Controllers
 {
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     [ApiController]
     public class AlphaVantageController : ControllerBase
     {
@@ -19,18 +19,23 @@ namespace DatabaseProjectAPI.Controllers
         [HttpGet("global_quote")]
         public async Task<IActionResult> GetGlobalQuote(string symbol)
         {
+            if (string.IsNullOrWhiteSpace(symbol))
+            {
+                return BadRequest(new { Message = "Stock symbol is required." });
+            }
+
             try
             {
-                var (open, price, volume, latestTradingDay) = await _alphaVantageService.GetStockQuote(symbol);
+                var (retrievedSymbol, open, price, volume, latestTradingDay) = await _alphaVantageService.GetStockQuote(symbol);
 
-                if (open == 0 && price == 0 && volume == 0 && latestTradingDay == DateTime.MinValue)
+                if (string.IsNullOrWhiteSpace(retrievedSymbol) || open == 0 && price == 0 && volume == 0 && latestTradingDay == DateTime.MinValue)
                 {
-                    return NotFound(new { Message = "No data found for the specified symbol." });
+                    return NotFound(new { Message = $"No data found for the symbol: {symbol}." });
                 }
 
                 return Ok(new
                 {
-                    Symbol = symbol,
+                    Symbol = retrievedSymbol,
                     Open = open,
                     Price = price,
                     Volume = volume,
@@ -44,4 +49,3 @@ namespace DatabaseProjectAPI.Controllers
         }
     }
 }
-
