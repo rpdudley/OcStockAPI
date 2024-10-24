@@ -39,8 +39,9 @@ builder.Services.AddTransient<IInvestorAccountAction, InvestorAccountAction>();
 builder.Services.AddTransient<ITrackedStockAction, TrackedStockAction>();
 builder.Services.AddTransient<IStockHistoryAction, StockHistoryAction>();
 builder.Services.AddTransient<IApiRequestLogger, ApiRequestLogger>();
+builder.Services.AddTransient<IAutoDeleteService, AutoDeleteAction>();
 
-// Register background service
+builder.Services.AddHostedService<DataCleanupBackgroundService>();
 builder.Services.AddHostedService<StockQuoteBackgroundService>();
 
 builder.Services.AddControllers();
@@ -49,11 +50,11 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-//if (app.Environment.IsDevelopment())
-//{
+if (app.Environment.IsDevelopment())
+{
     app.UseSwagger();
     app.UseSwaggerUI();
-//}
+}
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
