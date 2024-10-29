@@ -40,10 +40,12 @@ namespace DatabaseProjectAPI.DataContext
         public DbSet<EventMutualFund> EventMutualFunds { get; set; }
         public DbSet<TrackedStock> TrackedStocks { get; set; }
         public DbSet<ApiCallLog> ApiCallLog { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
+            // Composite keys for many-to-many relationships
             modelBuilder.Entity<PortfolioMutualFund>()
                 .HasKey(pm => new { pm.PortfolioId, pm.MutualFundId });
 
@@ -55,6 +57,20 @@ namespace DatabaseProjectAPI.DataContext
 
             modelBuilder.Entity<EventMutualFund>()
                 .HasKey(em => new { em.EventId, em.MutualFundId });
+
+            modelBuilder.Entity<Stock>()
+                .HasOne(s => s.TrackedStock)
+                .WithMany(ts => ts.Stocks)
+                .HasForeignKey(s => s.TrackedStockId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<StockHistory>()
+                .HasOne(sh => sh.Stock)
+                .WithMany(s => s.StockHistories)
+                .HasForeignKey(sh => sh.StockId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            base.OnModelCreating(modelBuilder);
         }
     }
 }

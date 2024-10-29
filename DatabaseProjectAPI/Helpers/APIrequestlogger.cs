@@ -13,10 +13,12 @@ namespace DatabaseProjectAPI.Helpers
     public class ApiRequestLogger : IApiRequestLogger
     {
         private readonly DpapiDbContext _dbContext;
+        private readonly ILogger<ApiRequestLogger> _logger;
 
-        public ApiRequestLogger(DpapiDbContext dbContext)
+        public ApiRequestLogger(DpapiDbContext dbContext, ILogger<ApiRequestLogger> logger)
         {
             _dbContext = dbContext;
+            _logger = logger;
         }
 
         public async Task<bool> HasMadeApiCallToday(string callType, string symbol)
@@ -28,6 +30,8 @@ namespace DatabaseProjectAPI.Helpers
 
         public async Task LogApiCall(string callType, string symbol)
         {
+            _logger.LogInformation("Logging API call for {Symbol} at {CallType}", symbol, callType);
+
             var logEntry = new ApiCallLog
             {
                 CallDate = DateTime.UtcNow.Date,
