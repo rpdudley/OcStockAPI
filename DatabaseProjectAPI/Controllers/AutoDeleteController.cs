@@ -1,4 +1,5 @@
 ﻿using DatabaseProjectAPI.Actions;
+using DatabaseProjectAPI.Helpers;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DatabaseProjectAPI.Controllers
@@ -8,10 +9,12 @@ namespace DatabaseProjectAPI.Controllers
     public class AutoDeleteController : ControllerBase
     {
         private readonly IAutoDeleteService _autoDeleteService;
+        private readonly IApiRequestLogger _apiRequestLogger;
 
-        public AutoDeleteController(IAutoDeleteService autoDeleteService)
+        public AutoDeleteController(IAutoDeleteService autoDeleteService, IApiRequestLogger apiRequestLogger)
         {
             _autoDeleteService = autoDeleteService;
+            _apiRequestLogger = apiRequestLogger;
         }
 
         [HttpDelete("cleanup")]
@@ -21,6 +24,12 @@ namespace DatabaseProjectAPI.Controllers
             await _autoDeleteService.DeleteOldApiCallLogs();
 
             return Ok(new { message = "Old data cleanup completed." });
+        }
+        [HttpPost("log")]
+        public async Task<IActionResult> TestLogApiCall()
+        {
+            await _apiRequestLogger.LogApiCall("TestCall", "AAPL");
+            return Ok("Test log added.");
         }
     }
 }
