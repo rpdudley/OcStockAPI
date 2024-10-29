@@ -68,22 +68,23 @@ public class StockQuoteBackgroundService : BackgroundService
                 var trackedStock = await dbContext.TrackedStocks.FirstOrDefaultAsync(t => t.Symbol == symbol);
                 if (trackedStock != null)
                 {
-                    // Check if there's an entry in `Stocks` for this tracked stock
+                    // Check if there's an existing entry in `Stocks` for this tracked stock
                     var stock = await dbContext.Stocks.FirstOrDefaultAsync(s => s.TrackedStockId == trackedStock.Id);
 
-                    // If no entry exists in `Stocks`, create one
+                    // If no entry exists, create one; otherwise, update the existing entry
                     if (stock == null)
                     {
                         stock = new Stock
                         {
                             TrackedStockId = trackedStock.Id,
-                            OpenValue = 0, 
-                            ClosingValue = 0, 
-                            Volume = 0, 
+                            Name = trackedStock.StockName, // Set the name from TrackedStocks
+                            Symbol = trackedStock.Symbol, // Set the symbol from TrackedStocks
+                            OpenValue = 0, // Placeholder values
+                            ClosingValue = 0, // Placeholder values
+                            Volume = 0, // Placeholder values
                             LastUpdated = DateTime.UtcNow
                         };
                         dbContext.Stocks.Add(stock);
-                        await dbContext.SaveChangesAsync();
                     }
 
                     // Fetch data from the API and update `Stocks` and `StockHistory`
