@@ -33,18 +33,24 @@ public class StockQuoteBackgroundService : BackgroundService
                 await autoDeleteService.DeleteOldStockHistory();
                 await autoDeleteService.DeleteOldApiCallLogs();
 
-                // Check if the market is closed and if data has already been logged for today
-                var marketStatus = await _finnhubService.MarkStatusAsync();
+                var trackedStocks = await dbContext.TrackedStocks.ToListAsync();
 
-                if (!marketStatus.isOpen && !await apiRequestLogger.HasMadeApiCallToday("MarketClose", "AAPL"))
+                var marketStatus = await _finnhubService.MarkStatusAsync();
+                if (!marketStatus.isOpen)
                 {
-                    _logger.LogInformation("Market is closed, fetching end-of-day stock data for symbol: AAPL");
-                    await FetchAndSaveStockData(dbContext, apiRequestLogger, "MarketClose", "AAPL");
+                    foreach (var stock in trackedStocks)
+                    {
+                        if (!await apiRequestLogger.HasMadeApiCallToday("MarketClose", stock.Symbol))
+                        {
+                            _logger.LogInformation("Market is closed, fetching end-of-day stock data for symbol: {Symbol}", stock.Symbol);
+                            await FetchAndSaveStockData(dbContext, apiRequestLogger, "MarketClose", stock.Symbol);
+                        }
+                    }
                 }
             }
 
             // Adjust delay to reduce frequency if only end-of-day data is needed
-            await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+            await Task.Delay(TimeSpan.FromHours(8), stoppingToken);
         }
     }
 
@@ -71,9 +77,9 @@ public class StockQuoteBackgroundService : BackgroundService
                         stock = new Stock
                         {
                             TrackedStockId = trackedStock.Id,
-                            OpenValue = 0, // Placeholder values
-                            ClosingValue = 0, // Placeholder values
-                            Volume = 0, // Placeholder values
+                            OpenValue = 0, 
+                            ClosingValue = 0, 
+                            Volume = 0, 
                             LastUpdated = DateTime.UtcNow
                         };
                         dbContext.Stocks.Add(stock);
