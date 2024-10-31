@@ -2,125 +2,143 @@
 using DatabaseProjectAPI.DataContext;
 using DatabaseProjectAPI.Entities;
 using DatabaseProjectAPI.Helpers;
+using static DatabaseProjectAPI.Services.AlphaVantageService;
 
-namespace DatabaseProjectAPI.Services;
-
-public class StockQuoteBackgroundService : BackgroundService
+namespace DatabaseProjectAPI.Services
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<StockQuoteBackgroundService> _logger;
-    private readonly IFinnhubService _finnhubService;
-
-    public StockQuoteBackgroundService(IServiceProvider serviceProvider, ILogger<StockQuoteBackgroundService> logger, IFinnhubService finnhubService)
+    public class StockQuoteBackgroundService : BackgroundService
     {
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-        _finnhubService = finnhubService;
-    }
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger<StockQuoteBackgroundService> _logger;
+        private readonly IFinnhubService _finnhubService;
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        _logger.LogInformation("StockQuoteBackgroundService started at: {time}", DateTime.UtcNow);
-
-        while (!stoppingToken.IsCancellationRequested)
+        public StockQuoteBackgroundService(
+            IServiceProvider serviceProvider,
+            ILogger<StockQuoteBackgroundService> logger,
+            IFinnhubService finnhubService)
         {
-            using (var scope = _serviceProvider.CreateScope())
+            _serviceProvider = serviceProvider;
+            _logger = logger;
+            _finnhubService = finnhubService;
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("StockQuoteBackgroundService started at: {Time}", DateTime.UtcNow);
+
+            while (!stoppingToken.IsCancellationRequested)
             {
-                var dbContext = scope.ServiceProvider.GetRequiredService<DpapiDbContext>();
-                var apiRequestLogger = scope.ServiceProvider.GetRequiredService<IApiRequestLogger>();
-                var autoDeleteService = scope.ServiceProvider.GetRequiredService<IAutoDeleteService>();
-
-                await autoDeleteService.DeleteOldStockHistory();
-                await autoDeleteService.DeleteOldApiCallLogs();
-
-                var trackedStocks = await dbContext.TrackedStocks.ToListAsync();
-
-                var marketStatus = await _finnhubService.MarkStatusAsync();
-                if (!marketStatus.isOpen)
+                using (var scope = _serviceProvider.CreateScope())
                 {
-                    foreach (var stock in trackedStocks)
+                    var dbContext = scope.ServiceProvider.GetRequiredService<DpapiDbContext>();
+                    var apiRequestLogger = scope.ServiceProvider.GetRequiredService<IApiRequestLogger>();
+                    var autoDeleteService = scope.ServiceProvider.GetRequiredService<IAutoDeleteService>();
+
+                    // Perform cleanup tasks
+                    await autoDeleteService.DeleteOldStockHistoryAsync(stoppingToken);
+                    await autoDeleteService.DeleteOldApiCallLogsAsync(stoppingToken);
+
+                    var trackedStocks = await dbContext.TrackedStocks.ToListAsync(stoppingToken);
+
+                    var marketStatus = await _finnhubService.MarkStatusAsync();
+                    if (!marketStatus.isOpen)
                     {
-                        if (!await apiRequestLogger.HasMadeApiCallToday("MarketClose", stock.Symbol))
+                        foreach (var trackedStock in trackedStocks)
                         {
-                            _logger.LogInformation("Market is closed, fetching end-of-day stock data for symbol: {Symbol}", stock.Symbol);
-                            await FetchAndSaveStockData(dbContext, apiRequestLogger, "MarketClose", stock.Symbol);
+                            if (!await apiRequestLogger.HasMadeApiCallTodayAsync("MarketClose", trackedStock.Symbol, stoppingToken))
+                            {
+                                _logger.LogInformation("Market is closed, fetching end-of-day stock data for symbol: {Symbol}", trackedStock.Symbol);
+                                await FetchAndSaveStockDataAsync(dbContext, apiRequestLogger, "MarketClose", trackedStock, stoppingToken);
+                            }
                         }
                     }
                 }
+
+                // Adjust delay to reduce frequency if only end-of-day data is needed
+                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
             }
-
-            // Adjust delay to reduce frequency if only end-of-day data is needed
-            await Task.Delay(TimeSpan.FromHours(8), stoppingToken);
         }
-    }
-
-    private async Task FetchAndSaveStockData(DpapiDbContext dbContext, IApiRequestLogger apiRequestLogger, string callType, string symbol)
-    {
-        _logger.LogInformation("FetchAndSaveStockData started for symbol {Symbol} with call type {CallType}", symbol, callType);
-
-        using (var scope = _serviceProvider.CreateScope())
+        private async Task FetchAndSaveStockDataAsync(DpapiDbContext dbContext, IApiRequestLogger apiRequestLogger, string callType, TrackedStock trackedStock, CancellationToken cancellationToken)
         {
-            var stockService = scope.ServiceProvider.GetRequiredService<IAlphaVantageService>();
+            var symbol = trackedStock.Symbol;
+            _logger.LogInformation("FetchAndSaveStockDataAsync started for symbol {Symbol} with call type {CallType}", symbol, callType);
 
             try
             {
-                // Check if the stock is tracked in TrackedStocks
-                var trackedStock = await dbContext.TrackedStocks.FirstOrDefaultAsync(t => t.Symbol == symbol);
-                if (trackedStock != null)
+                // Resolve the AlphaVantageService within the existing scope
+                var stockService = _serviceProvider.GetRequiredService<IAlphaVantageService>();
+
+                // Fetch data from the API
+                var stockQuote = await stockService.GetStockQuoteAsync(symbol);
+
+                // Check if there's an existing entry in `Stocks` for this tracked stock
+                var stock = await dbContext.Stocks
+                    .FirstOrDefaultAsync(s => s.TrackedStockId == trackedStock.Id, cancellationToken);
+
+                if (stock == null)
                 {
-                    // Check if there's an existing entry in `Stocks` for this tracked stock
-                    var stock = await dbContext.Stocks.FirstOrDefaultAsync(s => s.TrackedStockId == trackedStock.Id);
-
-                    // If no entry exists, create one; otherwise, update the existing entry
-                    if (stock == null)
+                    stock = new Stock
                     {
-                        stock = new Stock
-                        {
-                            TrackedStockId = trackedStock.Id,
-                            Name = trackedStock.StockName, // Set the name from TrackedStocks
-                            Symbol = trackedStock.Symbol, // Set the symbol from TrackedStocks
-                            OpenValue = 0, // Placeholder values
-                            ClosingValue = 0, // Placeholder values
-                            Volume = 0, // Placeholder values
-                            LastUpdated = DateTime.UtcNow
-                        };
-                        dbContext.Stocks.Add(stock);
-                    }
+                        TrackedStockId = trackedStock.Id,
+                        Name = trackedStock.StockName,
+                        Symbol = stockQuote.Symbol,
+                        OpenValue = stockQuote.Open,
+                        ClosingValue = stockQuote.Price,
+                        Volume = stockQuote.Volume,
+                        LastUpdated = DateTime.UtcNow
+                    };
+                    dbContext.Stocks.Add(stock);
 
-                    // Fetch data from the API and update `Stocks` and `StockHistory`
-                    var stockQuote = await stockService.GetStockQuote(symbol);
+                    // Save changes to get the generated StockId
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                }
+                else
+                {
+                    // Update existing stock entry
                     stock.OpenValue = stockQuote.Open;
                     stock.ClosingValue = stockQuote.Price;
                     stock.Volume = stockQuote.Volume;
                     stock.LastUpdated = DateTime.UtcNow;
 
-                    // Create a new entry in `StockHistory` to track the history
-                    var stockHistory = new StockHistory
-                    {
-                        StockId = stock.StockId,
-                        Timestamp = DateTime.UtcNow,
-                        OpenedValue = stockQuote.Open,
-                        ClosedValue = stockQuote.Price,
-                        Volume = stockQuote.Volume
-                    };
-                    dbContext.StockHistories.Add(stockHistory);
-
-                    // Save changes to both `Stocks` and `StockHistory`
-                    await dbContext.SaveChangesAsync();
-
-                    // Log that an API call was successfully made
-                    await apiRequestLogger.LogApiCall(callType, symbol);
-                    _logger.LogInformation("Stock and history data saved successfully for {Symbol} at {Timestamp}", symbol, DateTime.UtcNow);
+                    // Save changes to update the stock
+                    await dbContext.SaveChangesAsync(cancellationToken);
                 }
-                else
+
+                // Create a new entry in `StockHistory` to track the history
+                var stockHistory = new StockHistory
                 {
-                    _logger.LogWarning("Tracked stock not found in the database. Symbol: {Symbol}", symbol);
-                }
+                    Timestamp = stockQuote.LatestTradingDay,
+                    OpenedValue = stockQuote.Open,
+                    ClosedValue = stockQuote.Price,
+                    Volume = stockQuote.Volume,
+                    Stock = stock // Associate with the Stock entity via navigation property
+                };
+
+                dbContext.StockHistories.Add(stockHistory);
+
+                // Save changes to insert the StockHistory
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                // Log that an API call was successfully made
+                await apiRequestLogger.LogApiCallAsync(callType, symbol, cancellationToken);
+                _logger.LogInformation("Stock and history data saved successfully for {Symbol} at {Timestamp}", symbol, DateTime.UtcNow);
+            }
+            catch (ApiRateLimitExceededException ex)
+            {
+                _logger.LogWarning(ex, "API rate limit exceeded while fetching data for symbol: {Symbol}", symbol);
+                // Handle rate limiting, possibly implement a back-off strategy
+            }
+            catch (InvalidApiResponseException ex)
+            {
+                _logger.LogError(ex, "Invalid API response while fetching data for symbol: {Symbol}", symbol);
+                // Handle invalid responses
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while fetching and saving stock history data.");
+                _logger.LogError(ex, "An unexpected error occurred while fetching and saving stock data for symbol: {Symbol}", symbol);
+                // Handle unexpected exceptions
             }
         }
+
     }
 }

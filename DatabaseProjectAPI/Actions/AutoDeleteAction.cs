@@ -1,65 +1,91 @@
-﻿using DatabaseProjectAPI.DataContext;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
+using DatabaseProjectAPI.DataContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace DatabaseProjectAPI.Actions;
-
-
-public interface IAutoDeleteService
+namespace DatabaseProjectAPI.Actions
 {
-    Task DeleteOldStockHistory();
-    Task DeleteOldApiCallLogs();
-}
-
-
-public class AutoDeleteAction : IAutoDeleteService
-{
-    private readonly DpapiDbContext _dbContext;
-    private readonly ILogger<AutoDeleteAction> _logger;
-
-    public AutoDeleteAction(DpapiDbContext dbContext, ILogger<AutoDeleteAction> logger)
+    public interface IAutoDeleteService
     {
-        _dbContext = dbContext;
-        _logger = logger;
+        Task DeleteOldStockHistoryAsync(CancellationToken cancellationToken);
+        Task DeleteOldApiCallLogsAsync(CancellationToken cancellationToken);
     }
 
-    public async Task DeleteOldStockHistory()
+    public class AutoDeleteAction : IAutoDeleteService
     {
-        var ninetyDaysAgo = DateTime.UtcNow.AddDays(-90);
+        private readonly DpapiDbContext _dbContext;
+        private readonly ILogger<AutoDeleteAction> _logger;
 
-        var oldStockHistories = await _dbContext.StockHistories
-            .Where(sh => sh.Timestamp < ninetyDaysAgo)
-            .ToListAsync();
-
-        if (oldStockHistories.Any())
+        public AutoDeleteAction(DpapiDbContext dbContext, ILogger<AutoDeleteAction> logger)
         {
-            _dbContext.StockHistories.RemoveRange(oldStockHistories);
-            await _dbContext.SaveChangesAsync();
-            _logger.LogInformation("{Count} old stock history records deleted.", oldStockHistories.Count);
+            _dbContext = dbContext;
+            _logger = logger;
         }
-        else
+
+        public async Task DeleteOldStockHistoryAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("No stock history records found to delete.");
+            var ninetyDaysAgo = DateTime.UtcNow.AddDays(-90);
+
+            try
+            {
+                // Use ExecuteDeleteAsync for efficient bulk deletion (EF Core 7.0+)
+                int deletedCount = await _dbContext.StockHistories
+                    .Where(sh => sh.Timestamp < ninetyDaysAgo)
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                if (deletedCount > 0)
+                {
+                    _logger.LogInformation("{Count} old stock history records deleted.", deletedCount);
+                }
+                else
+                {
+                    _logger.LogInformation("No stock history records found to delete.");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Deletion of old stock history was cancelled.");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while deleting old stock history records.");
+                throw;
+            }
         }
-    }
 
-    public async Task DeleteOldApiCallLogs()
-    {
-        var ninetyDaysAgo = DateTime.UtcNow.AddDays(-90);
-
-        var oldApiCallLogs = await _dbContext.ApiCallLog
-            .Where(log => log.CallDate < ninetyDaysAgo)
-            .ToListAsync();
-
-        if (oldApiCallLogs.Any())
+        public async Task DeleteOldApiCallLogsAsync(CancellationToken cancellationToken)
         {
-            _dbContext.ApiCallLog.RemoveRange(oldApiCallLogs);
-            await _dbContext.SaveChangesAsync();
-            _logger.LogInformation("{Count} old API call log records deleted.", oldApiCallLogs.Count);
-        }
-        else
-        {
-            _logger.LogInformation("No API call log records found to delete.");
+            var ninetyDaysAgo = DateTime.UtcNow.AddDays(-90);
+
+            try
+            {
+                // Use ExecuteDeleteAsync for efficient bulk deletion (EF Core 7.0+)
+                int deletedCount = await _dbContext.ApiCallLog
+                    .Where(log => log.CallDate < ninetyDaysAgo)
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                if (deletedCount > 0)
+                {
+                    _logger.LogInformation("{Count} old API call log records deleted.", deletedCount);
+                }
+                else
+                {
+                    _logger.LogInformation("No API call log records found to delete.");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Deletion of old API call logs was cancelled.");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while deleting old API call log records.");
+                throw;
+            }
         }
     }
 }

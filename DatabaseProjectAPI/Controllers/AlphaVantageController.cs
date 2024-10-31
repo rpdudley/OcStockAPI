@@ -1,7 +1,7 @@
-﻿using DatabaseProjectAPI.Services;
+﻿using DatabaseProjectAPI.Helpers;
+using DatabaseProjectAPI.Services;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Threading.Tasks;
+using static DatabaseProjectAPI.Services.AlphaVantageService;
 
 namespace DatabaseProjectAPI.Controllers
 {
@@ -17,7 +17,7 @@ namespace DatabaseProjectAPI.Controllers
         }
 
         [HttpGet("global_quote")]
-        public async Task<IActionResult> GetGlobalQuote(string symbol)
+        public async Task<IActionResult> GetGlobalQuoteAsync([FromQuery] string symbol)
         {
             if (string.IsNullOrWhiteSpace(symbol))
             {
@@ -26,21 +26,22 @@ namespace DatabaseProjectAPI.Controllers
 
             try
             {
-                var (retrievedSymbol, open, price, volume, latestTradingDay) = await _alphaVantageService.GetStockQuote(symbol);
+                StockQuote stockQuote = await _alphaVantageService.GetStockQuoteAsync(symbol);
 
-                if (string.IsNullOrWhiteSpace(retrievedSymbol) || open == 0 && price == 0 && volume == 0 && latestTradingDay == DateTime.MinValue)
+                if (stockQuote == null)
                 {
                     return NotFound(new { Message = $"No data found for the symbol: {symbol}." });
                 }
 
-                return Ok(new
-                {
-                    Symbol = retrievedSymbol,
-                    Open = open,
-                    Price = price,
-                    Volume = volume,
-                    LatestTradingDay = latestTradingDay
-                });
+                return Ok(stockQuote);
+            }
+            catch (ApiRateLimitExceededException ex)
+            {
+                return StatusCode(429, new { Message = ex.Message });
+            }
+            catch (InvalidApiResponseException ex)
+            {
+                return StatusCode(502, new { Message = "Invalid response received from the API.", Details = ex.Message });
             }
             catch (Exception ex)
             {
@@ -49,3 +50,4 @@ namespace DatabaseProjectAPI.Controllers
         }
     }
 }
+

@@ -15,5 +15,5 @@ public class StockHistory
     public long Volume { get; set; }
 
     // Navigation Property to Stock
-    public Stock? Stock { get; set; }
+    public Stock Stock { get; set; }
 }

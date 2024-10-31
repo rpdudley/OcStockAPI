@@ -5,7 +5,7 @@ namespace DatabaseProjectAPI.Entities;
 public class AlphaVantageResponse
 {
     [JsonProperty("Global Quote")]
-    public GlobalQuote GlobalQuote { get; set; }
+    public GlobalQuote? GlobalQuote { get; set; }
 }
 
 //This is what is mapping out the json properties this is set by the alpha vantage api, you can add any poperties to the action in services folder to get more resuilts back 

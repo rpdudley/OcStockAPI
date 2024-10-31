@@ -11,5 +11,5 @@ public class TrackedStock
     public string? StockName { get; set; }
 
     // Navigation Property to Stocks
-    public ICollection<Stock>? Stocks { get; set; }
+    public ICollection<Stock> Stocks { get; set; }
 }

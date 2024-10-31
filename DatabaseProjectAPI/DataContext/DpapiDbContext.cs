@@ -62,15 +62,15 @@ namespace DatabaseProjectAPI.DataContext
                 .HasOne(s => s.TrackedStock)
                 .WithMany(ts => ts.Stocks)
                 .HasForeignKey(s => s.TrackedStockId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<StockHistory>()
                 .HasOne(sh => sh.Stock)
                 .WithMany(s => s.StockHistories)
                 .HasForeignKey(sh => sh.StockId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
-
-            base.OnModelCreating(modelBuilder);
         }
     }
 }

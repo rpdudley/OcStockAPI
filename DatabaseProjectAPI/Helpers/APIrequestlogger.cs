@@ -1,13 +1,12 @@
 ﻿using DatabaseProjectAPI.DataContext;
 using DatabaseProjectAPI.Entities.Settings;
-using Microsoft.EntityFrameworkCore;
 
 namespace DatabaseProjectAPI.Helpers
 {
     public interface IApiRequestLogger
     {
-        Task<bool> HasMadeApiCallToday(string callType, string symbol);
-        Task LogApiCall(string callType, string symbol);
+        Task<bool> HasMadeApiCallTodayAsync(string callType, string symbol, CancellationToken cancellationToken);
+        Task LogApiCallAsync(string callType, string symbol, CancellationToken cancellationToken);
     }
 
     public class ApiRequestLogger : IApiRequestLogger
@@ -21,16 +20,33 @@ namespace DatabaseProjectAPI.Helpers
             _logger = logger;
         }
 
-        public async Task<bool> HasMadeApiCallToday(string callType, string symbol)
+        public async Task<bool> HasMadeApiCallTodayAsync(string callType, string symbol, CancellationToken cancellationToken)
         {
             var today = DateTime.UtcNow.Date;
-            return await _dbContext.ApiCallLog
-                .AnyAsync(log => log.CallDate == today && log.CallType == callType && log.Symbol == symbol);
+
+            try
+            {
+                return await _dbContext.ApiCallLog
+                    .AsNoTracking()
+                    .AnyAsync(
+                        log => log.CallDate == today && log.CallType == callType && log.Symbol == symbol,
+                        cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Operation was cancelled while checking API call logs for {Symbol} and call type {CallType}.", symbol, callType);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while checking API call logs for {Symbol} and call type {CallType}.", symbol, callType);
+                throw;
+            }
         }
 
-        public async Task LogApiCall(string callType, string symbol)
+        public async Task LogApiCallAsync(string callType, string symbol, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Logging API call for {Symbol} at {CallType}", symbol, callType);
+            _logger.LogInformation("Logging API call for {Symbol} with call type {CallType}.", symbol, callType);
 
             var logEntry = new ApiCallLog
             {
@@ -39,8 +55,23 @@ namespace DatabaseProjectAPI.Helpers
                 Symbol = symbol
             };
 
-            _dbContext.ApiCallLog.Add(logEntry);
-            await _dbContext.SaveChangesAsync();
+            try
+            {
+                await _dbContext.ApiCallLog.AddAsync(logEntry, cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                _logger.LogInformation("API call logged successfully for {Symbol} with call type {CallType}.", symbol, callType);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Operation was cancelled while logging API call for {Symbol} and call type {CallType}.", symbol, callType);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while logging API call for {Symbol} and call type {CallType}.", symbol, callType);
+                throw;
+            }
         }
     }
 }
+
