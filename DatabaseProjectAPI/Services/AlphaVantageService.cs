@@ -4,6 +4,7 @@ using DatabaseProjectAPI.Helpers;
 using KubsConnect.Settings;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using YamlDotNet.Serialization;
 
 namespace DatabaseProjectAPI.Services
 {
@@ -18,10 +19,10 @@ namespace DatabaseProjectAPI.Services
         private readonly string _apiKey;
         private readonly ILogger<AlphaVantageService> _logger;
 
-        public AlphaVantageService(HttpClient httpClient, IOptions<AlphaVantageSettings> options, ILogger<AlphaVantageService> logger)
+        public AlphaVantageService(HttpClient httpClient, AlphaVantageSettings settings, ILogger<AlphaVantageService> logger)
         {
             _httpClient = httpClient;
-            _apiKey = options.Value.ApiKey;
+            _apiKey = settings.ApiKey;
             _logger = logger;
         }
 
