@@ -28,34 +28,40 @@ namespace DatabaseProjectAPI.Services
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                using (var scope = _serviceProvider.CreateScope())
+                var currentTime = DateTime.UtcNow;
+
+                if (currentTime.Hour == 22 && currentTime.Minute == 0 || currentTime.Minute == 1)
                 {
-                    var dbContext = scope.ServiceProvider.GetRequiredService<DpapiDbContext>();
-                    var apiRequestLogger = scope.ServiceProvider.GetRequiredService<IApiRequestLogger>();
-                    var autoDeleteService = scope.ServiceProvider.GetRequiredService<IAutoDeleteService>();
-
-                    // Perform cleanup tasks
-                    await autoDeleteService.DeleteOldStockHistoryAsync(stoppingToken);
-                    await autoDeleteService.DeleteOldApiCallLogsAsync(stoppingToken);
-
-                    var trackedStocks = await dbContext.TrackedStocks.ToListAsync(stoppingToken);
-
-                    var marketStatus = await _finnhubService.MarkStatusAsync();
-                    if (!marketStatus.isOpen)
+                    using (var scope = _serviceProvider.CreateScope())
                     {
-                        foreach (var trackedStock in trackedStocks)
+                        var dbContext = scope.ServiceProvider.GetRequiredService<DpapiDbContext>();
+                        var apiRequestLogger = scope.ServiceProvider.GetRequiredService<IApiRequestLogger>();
+                        var autoDeleteService = scope.ServiceProvider.GetRequiredService<IAutoDeleteService>();
+
+                        // Perform cleanup tasks
+                        await autoDeleteService.DeleteOldStockHistoryAsync(stoppingToken);
+                        await autoDeleteService.DeleteOldApiCallLogsAsync(stoppingToken);
+
+                        var trackedStocks = await dbContext.TrackedStocks.ToListAsync(stoppingToken);
+
+                        var marketStatus = await _finnhubService.MarkStatusAsync();
+                        if (!marketStatus.isOpen)
                         {
-                            if (!await apiRequestLogger.HasMadeApiCallTodayAsync("MarketClose", trackedStock.Symbol, stoppingToken))
+                            foreach (var trackedStock in trackedStocks)
                             {
-                                _logger.LogInformation("Market is closed, fetching end-of-day stock data for symbol: {Symbol}", trackedStock.Symbol);
-                                await FetchAndSaveStockDataAsync(dbContext, apiRequestLogger, "MarketClose", trackedStock, stoppingToken);
+                                if (!await apiRequestLogger.HasMadeApiCallTodayAsync("MarketClose", trackedStock.Symbol, stoppingToken))
+                                {
+                                    _logger.LogInformation("Market is closed, fetching end-of-day stock data for symbol: {Symbol}", trackedStock.Symbol);
+                                    await FetchAndSaveStockDataAsync(dbContext, apiRequestLogger, "MarketClose", trackedStock, stoppingToken);
+                                }
                             }
                         }
                     }
+                    await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
                 }
 
                 // Adjust delay to reduce frequency if only end-of-day data is needed
-                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
         }
         private async Task FetchAndSaveStockDataAsync(DpapiDbContext dbContext, IApiRequestLogger apiRequestLogger, string callType, TrackedStock trackedStock, CancellationToken cancellationToken)
