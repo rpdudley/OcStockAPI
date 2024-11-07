@@ -15,11 +15,10 @@ namespace DatabaseProjectAPI.Controllers
         {
             _trackedStockAction = trackedStockAction;
         }
-
         [HttpGet]
-        public IActionResult GetTrackedStocks()
+        public IActionResult GetTrackedStocks([FromQuery] string symbol = "")
         {
-            var stocks = _trackedStockAction.GetTrackedStocks();
+            var stocks = _trackedStockAction.GetTrackedStocks(symbol);
             return Ok(stocks);
         }
 
