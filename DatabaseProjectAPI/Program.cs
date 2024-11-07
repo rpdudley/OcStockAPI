@@ -29,6 +29,7 @@ builder.Services.AddDbContext<DpapiDbContext>(options =>
 });
 
 // Register services
+builder.Services.AddHealthChecks();
 builder.Services.AddHttpClient<IFinnhubService, FinnhubService>();
 builder.Services.AddHttpClient<IAlphaVantageService, AlphaVantageService>();
 
@@ -56,6 +57,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.MapHealthChecks("/status");
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
