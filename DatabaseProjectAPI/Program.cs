@@ -29,7 +29,9 @@ builder.Services.AddDbContext<DpapiDbContext>(options =>
 });
 
 // Register services
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddMySql(client.config.DBConnectionSettings.RyanWilliamDB, name: "MySQL Database");
+
 builder.Services.AddHttpClient<IFinnhubService, FinnhubService>();
 builder.Services.AddHttpClient<IAlphaVantageService, AlphaVantageService>();
 

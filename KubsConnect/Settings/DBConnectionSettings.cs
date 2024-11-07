@@ -1,7 +1,10 @@
-﻿namespace KubsConnect.Settings
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace KubsConnect.Settings
 {
     public class DBConnectionSettings
     {
-        public string? RyanWilliamDB { get; set; }
+        [Required]
+        public string RyanWilliamDB { get; set; } = String.Empty;
     }
 }
