@@ -43,6 +43,7 @@ builder.Services.AddTransient<ITrackedStockAction, TrackedStockAction>();
 builder.Services.AddTransient<IStockHistoryAction, StockHistoryAction>();
 builder.Services.AddTransient<IApiRequestLogger, ApiRequestLogger>();
 builder.Services.AddTransient<IAutoDeleteService, AutoDeleteAction>();
+builder.Services.AddTransient<IStockAction, StockAction>();
 
 builder.Services.AddHostedService<DataCleanupBackgroundService>();
 builder.Services.AddHostedService<StockQuoteBackgroundService>();
