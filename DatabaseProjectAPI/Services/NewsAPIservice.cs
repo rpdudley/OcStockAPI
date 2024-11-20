@@ -40,7 +40,6 @@ namespace DatabaseProjectAPI.Services
 
             if (response.IsSuccessStatusCode)
             {
-                //fix this to change from raw json
                 var jsonResponse = await response.Content.ReadAsStringAsync();
 
                 var articlesResponse = JsonConvert.DeserializeObject<NewsApiResponse>(jsonResponse);

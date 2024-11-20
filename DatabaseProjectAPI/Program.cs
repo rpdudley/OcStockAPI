@@ -47,6 +47,7 @@ builder.Services.AddTransient<IStockAction, StockAction>();
 
 builder.Services.AddHostedService<DataCleanupBackgroundService>();
 builder.Services.AddHostedService<StockQuoteBackgroundService>();
+builder.Services.AddHostedService<NewsBackgroundService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

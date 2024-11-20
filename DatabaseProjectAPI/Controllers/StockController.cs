@@ -26,6 +26,27 @@ namespace DatabaseProjectAPI.Controllers
             }
             return Ok(stock);
         }
+
+        // GET: api/stock
+        [HttpGet]
+        public async Task<IActionResult> GetAllStocks()
+        {
+            var stocks = await _stockAction.GetAllStocks();
+            return Ok(stocks);
+        }
+
+        // GET: api/stock/symbol/{symbol}
+        [HttpGet("symbol/{symbol}")]
+        public async Task<IActionResult> GetStocksBySymbol(string symbol)
+        {
+            var stocks = await _stockAction.GetStocksBySymbol(symbol);
+            if (stocks == null || stocks.Count == 0)
+            {
+                return NotFound(new { Message = $"No stocks found for symbol: {symbol}" });
+            }
+            return Ok(stocks);
+        }
     }
 }
+
 
