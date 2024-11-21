@@ -71,6 +71,13 @@ namespace DatabaseProjectAPI.DataContext
                 .HasForeignKey(sh => sh.StockId)
                 .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<MarketNews>()
+                .HasOne(mn => mn.Stock)
+                .WithMany(s => s.MarketNews)
+                .HasForeignKey(mn => mn.StockId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

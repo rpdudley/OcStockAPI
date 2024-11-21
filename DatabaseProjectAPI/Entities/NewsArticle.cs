@@ -6,6 +6,9 @@ namespace DatabaseProjectAPI.Entities;
     {
         [JsonProperty("articles")]
         public List<Article> Articles { get; set; }
+
+        [JsonProperty("status")]
+        public string Status { get; set; }
     }
 
     public class Article

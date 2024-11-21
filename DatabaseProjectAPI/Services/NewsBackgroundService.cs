@@ -1,81 +1,114 @@
 ﻿using DatabaseProjectAPI.DataContext;
 using DatabaseProjectAPI.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
-namespace DatabaseProjectAPI.Services;
-
-public class NewsBackgroundService : BackgroundService
+namespace DatabaseProjectAPI.Services
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<NewsBackgroundService> _logger;
-
-    public NewsBackgroundService(
-        IServiceProvider serviceProvider,
-        ILogger<NewsBackgroundService> logger)
+    public class NewsBackgroundService : BackgroundService
     {
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-    }
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger<NewsBackgroundService> _logger;
+        private readonly INewsAPIService _newsAPIService;
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        _logger.LogInformation("NewsBackgroundService started at: {Time}", DateTime.UtcNow);
-
-        while (!stoppingToken.IsCancellationRequested)
+        public NewsBackgroundService(
+            IServiceProvider serviceProvider,
+            ILogger<NewsBackgroundService> logger,
+            INewsAPIService newsAPIService)
         {
-            var currentTime = DateTime.UtcNow;
+            _serviceProvider = serviceProvider;
+            _logger = logger;
+            _newsAPIService = newsAPIService;
+        }
 
-            if (currentTime.Hour == 22 && currentTime.Minute == 0)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("NewsBackgroundService started at: {Time}", DateTime.UtcNow);
+
+            while (!stoppingToken.IsCancellationRequested)
             {
-                using (var scope = _serviceProvider.CreateScope())
+                var currentTime = DateTime.UtcNow;
+                var nextRunTime = currentTime.Date.AddHours(22);
+
+                if (currentTime >= nextRunTime)
                 {
-                    var dbContext = scope.ServiceProvider.GetRequiredService<DpapiDbContext>();
-                    var newsService = scope.ServiceProvider.GetRequiredService<INewsAPIService>();
+                    nextRunTime = nextRunTime.AddDays(1);
+                }
 
-                    var trackedStocks = await dbContext.TrackedStocks.ToListAsync(stoppingToken);
+                var delay = nextRunTime - currentTime;
+                _logger.LogInformation("Next execution scheduled at: {Time}", nextRunTime);
 
-                    foreach (var trackedStock in trackedStocks)
+                // Delay until the next execution time
+                await Task.Delay(delay, stoppingToken);
+
+                // Perform the work
+                await FetchAndSaveNewsAsync(stoppingToken);
+
+                _logger.LogInformation("NewsBackgroundService has completed its execution.");
+            }
+        }
+
+        public async Task FetchAndSaveNewsAsync(CancellationToken stoppingToken)
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<DpapiDbContext>();
+
+                var trackedStocks = await dbContext.TrackedStocks.ToListAsync(stoppingToken);
+
+                foreach (var trackedStock in trackedStocks)
+                {
+                    try
                     {
                         _logger.LogInformation("Fetching news for stock symbol: {Symbol}", trackedStock.Symbol);
 
-                        try
+                        // Fetch news articles using NewsAPIService
+                        var fromDate = DateTime.UtcNow.AddDays(-1);
+                        var toDate = DateTime.UtcNow;
+                        var newsArticles = await _newsAPIService.GetNewsDataAsync(trackedStock.StockName, fromDate, toDate);
+
+                        // Retrieve the corresponding Stock entity
+                        var stock = await dbContext.Stocks
+                            .FirstOrDefaultAsync(s => s.Symbol == trackedStock.Symbol, stoppingToken);
+
+                        if (stock == null)
                         {
-                            // Fetch news for the stock symbol
-                            var newsArticles = await newsService.GetNewsDataAsync(
-                                trackedStock.StockName,
-                                DateTime.UtcNow.AddDays(-1),
-                                DateTime.UtcNow
-                            );
+                            // Handle missing Stock
+                            _logger.LogError("Stock with symbol {Symbol} not found in Stocks table.", trackedStock.Symbol);
+                            continue; // Skip to the next iteration
+                        }
 
-                            // Save news articles to the database
-                            foreach (var article in newsArticles.Take(1)) // Limit to 1 article per stock
+                        // Create MarketNews entries
+                        foreach (var article in newsArticles)
+                        {
+                            // Check if the news article already exists to avoid duplicates
+                            bool exists = await dbContext.MarketNews.AnyAsync(mn => mn.SourceUrl == article.Url, stoppingToken);
+                            if (exists)
                             {
-                                var marketNews = new MarketNews
-                                {
-                                    StockId = trackedStock.Id,
-                                    Headline = article.Title,
-                                    SourceUrl = article.Url,
-                                    Datetime = article.PublishedAt
-                                };
-
-                                dbContext.MarketNews.Add(marketNews);
+                                continue; // Skip existing news articles
                             }
 
-                            await dbContext.SaveChangesAsync(stoppingToken);
-                            _logger.LogInformation("News for stock {Symbol} saved successfully.", trackedStock.Symbol);
+                            var marketNews = new MarketNews
+                            {
+                                StockId = stock.StockId, // Use existing StockId
+                                Headline = article.Title,
+                                SourceUrl = article.Url,
+                                Datetime = article.PublishedAt
+                            };
+
+                            dbContext.MarketNews.Add(marketNews);
                         }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "An error occurred while fetching or saving news for stock: {Symbol}", trackedStock.Symbol);
-                        }
+
+                        await dbContext.SaveChangesAsync(stoppingToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log the error
+                        _logger.LogError(ex, "An error occurred while fetching or saving news for stock: {Symbol}", trackedStock.Symbol);
                     }
                 }
-
-                // Delay to prevent frequent execution
-                await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
             }
-
-            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
         }
     }
 }
-

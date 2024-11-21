@@ -1,11 +1,7 @@
-﻿using System;
-using System.Net.Http;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using Newtonsoft.Json;
-using Microsoft.Extensions.Options;
+﻿using DatabaseProjectAPI.Entities;
 using KubsConnect.Settings;
-using DatabaseProjectAPI.Entities;
+using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 
 namespace DatabaseProjectAPI.Services
 {
@@ -13,7 +9,7 @@ namespace DatabaseProjectAPI.Services
     {
         Task<List<Article>> GetNewsDataAsync(string name, DateTime from, DateTime to);
     }
-        public class NewsAPIService : INewsAPIService
+    public class NewsAPIService : INewsAPIService
     {
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
@@ -25,13 +21,12 @@ namespace DatabaseProjectAPI.Services
             _apiKey = settings.ApiKey;
         }
 
-
         public async Task<List<Article>> GetNewsDataAsync(string name, DateTime from, DateTime to)
         {
             string fromDate = from.ToString("yyyy-MM-dd");
             string toDate = to.ToString("yyyy-MM-dd");
 
-            var url = $"https://newsapi.org/v2/everything?q={name}&from={fromDate}&to={toDate}&sortBy=popularity&apiKey={_apiKey}";
+            var url = $"https://newsapi.org/v2/everything?q={Uri.EscapeDataString(name)}&from={fromDate}&to={toDate}&sortBy=popularity&apiKey={_apiKey}";
 
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("User-Agent", "RyanStockApp/1.0");

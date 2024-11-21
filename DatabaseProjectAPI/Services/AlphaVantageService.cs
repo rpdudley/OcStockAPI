@@ -1,10 +1,7 @@
-﻿using Newtonsoft.Json;
-using DatabaseProjectAPI.Entities;
+﻿using DatabaseProjectAPI.Entities;
 using DatabaseProjectAPI.Helpers;
 using KubsConnect.Settings;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using YamlDotNet.Serialization;
+using Newtonsoft.Json;
 
 namespace DatabaseProjectAPI.Services
 {

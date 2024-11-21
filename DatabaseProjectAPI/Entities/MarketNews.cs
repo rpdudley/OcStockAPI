@@ -1,36 +1,31 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace DatabaseProjectAPI.Entities
+﻿namespace DatabaseProjectAPI.Entities
 {
     [Table("MarketNews")]
     public class MarketNews
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [Column("news_id")] 
+        [Column("news_id")]
         public int NewsId { get; set; }
 
         [Required]
-        [Column("stock_id")] 
+        [Column("stock_id")]
         public int StockId { get; set; }
 
         [Required]
         [MaxLength(500)]
-        [Column("headline")] 
+        [Column("headline")]
         public string Headline { get; set; }
 
         [Required]
         [MaxLength(2048)]
-        [Column("source_url")] 
+        [Column("source_url")]
         public string SourceUrl { get; set; }
 
         [Required]
-        [Column("datetime")] 
+        [Column("datetime")]
         public DateTime Datetime { get; set; }
 
-        // Navigation property for the related Stock entity
         [ForeignKey("StockId")]
         public Stock Stock { get; set; }
     }
