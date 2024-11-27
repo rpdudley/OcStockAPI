@@ -19,6 +19,8 @@ namespace DatabaseProjectAPI.DataContext
         DbSet<EventMutualFund> EventMutualFunds { get; set; }
         DbSet<TrackedStock> TrackedStocks { get; set; }
         DbSet<ApiCallLog> ApiCallLog { get; set; }
+
+        Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }
 
     public class DpapiDbContext : DbContext, IDpapiDbContext
@@ -78,6 +80,25 @@ namespace DatabaseProjectAPI.DataContext
                 .HasForeignKey(mn => mn.StockId)
                 .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<EventStock>()
+                .HasOne(es => es.Event)
+                .WithMany(e => e.EventStocks)
+                .HasForeignKey(es => es.EventId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Define Stock -> EventStock relationship
+            modelBuilder.Entity<EventStock>()
+                .HasOne(es => es.Stock)
+                .WithMany(s => s.EventStocks)
+                .HasForeignKey(es => es.StockId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+        }
+
+        public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            return await base.SaveChangesAsync(cancellationToken);
         }
     }
 }

@@ -1,0 +1,169 @@
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using DatabaseProjectAPI.DataContext;
+using DatabaseProjectAPI.Entities;
+using DatabaseProjectAPI.Services;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace DatabaseProjectAPI.Services
+{
+    public class EventsBackgroundService : BackgroundService
+    {
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger<EventsBackgroundService> _logger;
+
+        public EventsBackgroundService(IServiceProvider serviceProvider, ILogger<EventsBackgroundService> logger)
+        {
+            _serviceProvider = serviceProvider;
+            _logger = logger;
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("EventsBackgroundService started at: {Time}", DateTime.UtcNow);
+
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                using (var scope = _serviceProvider.CreateScope())
+                {
+                    try
+                    {
+                        // Resolve scoped dependencies
+                        var dbContext = scope.ServiceProvider.GetRequiredService<DpapiDbContext>();
+                        var alphaVantageService = scope.ServiceProvider.GetRequiredService<IAlphaVantageService>();
+
+                        // Fetch and save data
+                        await FetchAndSaveInflationDataAsync(dbContext, alphaVantageService, stoppingToken);
+                        await FetchAndSaveFederalInterestRateAsync(dbContext, alphaVantageService, stoppingToken);
+                        await FetchAndSaveUnemploymentRateAsync(dbContext, alphaVantageService, stoppingToken);
+                        await FetchAndSaveCPIAsync(dbContext, alphaVantageService, stoppingToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "An error occurred in EventsBackgroundService.");
+                    }
+                }
+
+                // Wait for 24 hours before fetching data again
+                await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
+            }
+
+            _logger.LogInformation("EventsBackgroundService stopped.");
+        }
+
+        private async Task FetchAndSaveInflationDataAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
+        {
+            try
+            {
+                var inflationData = await alphaVantageService.GetInflationAsync();
+
+                if (inflationData?.Data?.Any() == true)
+                {
+                    var latestData = inflationData.Data.OrderByDescending(d => DateTime.Parse(d.Date)).First();
+
+                    var existingEvent = await FindOrCreateEventAsync(dbContext, DateTime.Parse(latestData.Date), stoppingToken);
+                    existingEvent.Inflation = decimal.Parse(latestData.Value);
+
+                    await dbContext.SaveChangesAsync(stoppingToken);
+                    _logger.LogInformation("Inflation data updated for date {Date}.", latestData.Date);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fetch or save inflation data.");
+            }
+        }
+
+        private async Task FetchAndSaveFederalInterestRateAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
+        {
+            try
+            {
+                var rateData = await alphaVantageService.GetFederalInterestRateAsync();
+
+                if (rateData?.Data?.Any() == true)
+                {
+                    var latestData = rateData.Data.OrderByDescending(d => DateTime.Parse(d.Date)).First();
+
+                    var existingEvent = await FindOrCreateEventAsync(dbContext, DateTime.Parse(latestData.Date), stoppingToken);
+                    existingEvent.FederalInterestRate = decimal.Parse(latestData.Value);
+
+                    await dbContext.SaveChangesAsync(stoppingToken);
+                    _logger.LogInformation("Federal interest rate data updated for date {Date}.", latestData.Date);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fetch or save federal interest rate data.");
+            }
+        }
+
+        private async Task FetchAndSaveUnemploymentRateAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
+        {
+            try
+            {
+                var unemploymentData = await alphaVantageService.GetUnemploymentRateAsync();
+
+                if (unemploymentData?.Data?.Any() == true)
+                {
+                    var latestData = unemploymentData.Data.OrderByDescending(d => DateTime.Parse(d.Date)).First();
+
+                    var existingEvent = await FindOrCreateEventAsync(dbContext, DateTime.Parse(latestData.Date), stoppingToken);
+                    existingEvent.UnemploymentRate = decimal.Parse(latestData.Value);
+
+                    await dbContext.SaveChangesAsync(stoppingToken);
+                    _logger.LogInformation("Unemployment rate data updated for date {Date}.", latestData.Date);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fetch or save unemployment rate data.");
+            }
+        }
+
+        private async Task FetchAndSaveCPIAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
+        {
+            try
+            {
+                var cpiData = await alphaVantageService.GetCPIdataAsync();
+
+                if (cpiData?.Data?.Any() == true)
+                {
+                    var latestData = cpiData.Data.OrderByDescending(d => DateTime.Parse(d.Date)).First();
+
+                    var existingEvent = await FindOrCreateEventAsync(dbContext, DateTime.Parse(latestData.Date), stoppingToken);
+                    existingEvent.CPI = decimal.Parse(latestData.Value);
+
+                    await dbContext.SaveChangesAsync(stoppingToken);
+                    _logger.LogInformation("CPI data updated for date {Date}.", latestData.Date);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fetch or save CPI data.");
+            }
+        }
+
+        private async Task<Event> FindOrCreateEventAsync(IDpapiDbContext dbContext, DateTime date, CancellationToken stoppingToken)
+        {
+            var existingEvent = await dbContext.Events
+                .FirstOrDefaultAsync(e => e.Datetime != null && e.Datetime.Value.Date == date.Date, stoppingToken);
+
+            if (existingEvent == null)
+            {
+                existingEvent = new Event
+                {
+                    Datetime = date
+                };
+
+                await dbContext.Events.AddAsync(existingEvent, stoppingToken);
+            }
+
+            return existingEvent;
+        }
+
+    }
+}

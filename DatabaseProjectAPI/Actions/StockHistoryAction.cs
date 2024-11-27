@@ -23,8 +23,8 @@ namespace DatabaseProjectAPI.Actions
         public List<StockHistory> GetStockHistory(string symbol)
         {
             return _dpapiDbContext.StockHistories
-                .Where(sh => sh.Stock.Symbol == symbol)  // Filter by stock symbol
-                .OrderByDescending(sh => sh.Timestamp)  // Order by timestamp, latest first
+                .Where(sh => sh.Stock.Symbol == symbol)  
+                .OrderByDescending(sh => sh.Timestamp)  
                 .ToList();
         }
     }

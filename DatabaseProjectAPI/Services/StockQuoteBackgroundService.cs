@@ -60,7 +60,7 @@ namespace DatabaseProjectAPI.Services
                     await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
                 }
 
-                // Adjust delay to reduce frequency if only end-of-day data is needed
+                
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
         }
@@ -117,32 +117,30 @@ namespace DatabaseProjectAPI.Services
                     OpenedValue = stockQuote.Open,
                     ClosedValue = stockQuote.Price,
                     Volume = stockQuote.Volume,
-                    Stock = stock // Associate with the Stock entity via navigation property
+                    Stock = stock 
                 };
 
                 dbContext.StockHistories.Add(stockHistory);
 
-                // Save changes to insert the StockHistory
                 await dbContext.SaveChangesAsync(cancellationToken);
 
-                // Log that an API call was successfully made
+                
                 await apiRequestLogger.LogApiCallAsync(callType, symbol, cancellationToken);
                 _logger.LogInformation("Stock and history data saved successfully for {Symbol} at {Timestamp}", symbol, DateTime.UtcNow);
             }
             catch (ApiRateLimitExceededException ex)
             {
                 _logger.LogWarning(ex, "API rate limit exceeded while fetching data for symbol: {Symbol}", symbol);
-                // Handle rate limiting, possibly implement a back-off strategy
+                
             }
             catch (InvalidApiResponseException ex)
             {
                 _logger.LogError(ex, "Invalid API response while fetching data for symbol: {Symbol}", symbol);
-                // Handle invalid responses
+                
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An unexpected error occurred while fetching and saving stock data for symbol: {Symbol}", symbol);
-                // Handle unexpected exceptions
             }
         }
 
