@@ -1,13 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using DatabaseProjectAPI.DataContext;
-using DatabaseProjectAPI.Entities;
-using DatabaseProjectAPI.Services;
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using DatabaseProjectAPI.DataContext;
 
 namespace DatabaseProjectAPI.Services
 {
@@ -65,8 +56,10 @@ namespace DatabaseProjectAPI.Services
                 {
                     var latestData = inflationData.Data.OrderByDescending(d => DateTime.Parse(d.Date)).First();
 
-                    var existingEvent = await FindOrCreateEventAsync(dbContext, DateTime.Parse(latestData.Date), stoppingToken);
-                    existingEvent.Inflation = decimal.Parse(latestData.Value);
+                    var eventEntity = await GetOrCreateEventAsync(dbContext, DateTime.Parse(latestData.Date), stoppingToken);
+
+                    // Update only the Inflation field
+                    eventEntity.Inflation = decimal.Parse(latestData.Value);
 
                     await dbContext.SaveChangesAsync(stoppingToken);
                     _logger.LogInformation("Inflation data updated for date {Date}.", latestData.Date);
@@ -78,6 +71,8 @@ namespace DatabaseProjectAPI.Services
             }
         }
 
+
+
         private async Task FetchAndSaveFederalInterestRateAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
         {
             try
@@ -88,8 +83,9 @@ namespace DatabaseProjectAPI.Services
                 {
                     var latestData = rateData.Data.OrderByDescending(d => DateTime.Parse(d.Date)).First();
 
-                    var existingEvent = await FindOrCreateEventAsync(dbContext, DateTime.Parse(latestData.Date), stoppingToken);
-                    existingEvent.FederalInterestRate = decimal.Parse(latestData.Value);
+                    var eventEntity = await GetOrCreateEventAsync(dbContext, DateTime.Parse(latestData.Date), stoppingToken);
+
+                    eventEntity.FederalInterestRate = decimal.Parse(latestData.Value);
 
                     await dbContext.SaveChangesAsync(stoppingToken);
                     _logger.LogInformation("Federal interest rate data updated for date {Date}.", latestData.Date);
@@ -101,6 +97,7 @@ namespace DatabaseProjectAPI.Services
             }
         }
 
+
         private async Task FetchAndSaveUnemploymentRateAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
         {
             try
@@ -111,8 +108,9 @@ namespace DatabaseProjectAPI.Services
                 {
                     var latestData = unemploymentData.Data.OrderByDescending(d => DateTime.Parse(d.Date)).First();
 
-                    var existingEvent = await FindOrCreateEventAsync(dbContext, DateTime.Parse(latestData.Date), stoppingToken);
-                    existingEvent.UnemploymentRate = decimal.Parse(latestData.Value);
+                    var eventEntity = await GetOrCreateEventAsync(dbContext, DateTime.Parse(latestData.Date), stoppingToken);
+
+                    eventEntity.UnemploymentRate = decimal.Parse(latestData.Value);
 
                     await dbContext.SaveChangesAsync(stoppingToken);
                     _logger.LogInformation("Unemployment rate data updated for date {Date}.", latestData.Date);
@@ -124,6 +122,7 @@ namespace DatabaseProjectAPI.Services
             }
         }
 
+
         private async Task FetchAndSaveCPIAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
         {
             try
@@ -134,8 +133,11 @@ namespace DatabaseProjectAPI.Services
                 {
                     var latestData = cpiData.Data.OrderByDescending(d => DateTime.Parse(d.Date)).First();
 
-                    var existingEvent = await FindOrCreateEventAsync(dbContext, DateTime.Parse(latestData.Date), stoppingToken);
-                    existingEvent.CPI = decimal.Parse(latestData.Value);
+                    // Get existing event or create a new one
+                    var eventEntity = await GetOrCreateEventAsync(dbContext, DateTime.Parse(latestData.Date), stoppingToken);
+
+                    // Update only the CPI field
+                    eventEntity.CPI = decimal.Parse(latestData.Value);
 
                     await dbContext.SaveChangesAsync(stoppingToken);
                     _logger.LogInformation("CPI data updated for date {Date}.", latestData.Date);
@@ -147,22 +149,32 @@ namespace DatabaseProjectAPI.Services
             }
         }
 
-        private async Task<Event> FindOrCreateEventAsync(IDpapiDbContext dbContext, DateTime date, CancellationToken stoppingToken)
-        {
-            var existingEvent = await dbContext.Events
-                .FirstOrDefaultAsync(e => e.Datetime != null && e.Datetime.Value.Date == date.Date, stoppingToken);
 
-            if (existingEvent == null)
+
+        private async Task<Event> GetOrCreateEventAsync(IDpapiDbContext dbContext, DateTime date, CancellationToken stoppingToken)
+        {
+            // Try to find an existing event for the given date
+            var existingEvent = await dbContext.Events.FirstOrDefaultAsync(e => e.Datetime.HasValue && e.Datetime.Value.Date == date.Date, stoppingToken);
+
+
+            if (existingEvent != null)
             {
-                existingEvent = new Event
+                // Return the existing event to update it
+                return existingEvent;
+            }
+            else
+            {
+                // Create a new event if none exists
+                var newEvent = new Event
                 {
-                    Datetime = date
+                    Datetime = date,
+                    CreatedAt = DateTime.UtcNow
                 };
 
-                await dbContext.Events.AddAsync(existingEvent, stoppingToken);
-            }
+                await dbContext.Events.AddAsync(newEvent, stoppingToken);
 
-            return existingEvent;
+                return newEvent;
+            }
         }
 
     }

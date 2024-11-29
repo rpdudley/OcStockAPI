@@ -15,16 +15,19 @@ public class Event
     public DateTime? Datetime { get; set; }
 
     [Column("federal_interest_rate")]
-    public decimal FederalInterestRate { get; set; }
+    public decimal? FederalInterestRate { get; set; }
 
     [Column("unemployment_rate")]
-    public decimal UnemploymentRate { get; set; }
+    public decimal? UnemploymentRate { get; set; }
 
     [Column("inflation")]
-    public decimal Inflation { get; set; }
+    public decimal? Inflation { get; set; }
 
     [Column("cpi")]
-    public decimal CPI { get; set; }
+    public decimal? CPI { get; set; }
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; }
 
     public ICollection<EventStock> EventStocks { get; set; }
 }
