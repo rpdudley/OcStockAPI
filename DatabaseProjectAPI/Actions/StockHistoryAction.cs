@@ -7,7 +7,8 @@ namespace DatabaseProjectAPI.Actions
 {
     public interface IStockHistoryAction
     {
-        List<StockHistory> GetStockHistory(string symbol);  // Fetch stock history by symbol
+        List<StockHistory> GetStockHistory(string symbol);
+        List<StockHistory> GetStockHistory(string symbol, DateTime fromDate, DateTime toDate);
     }
 
     public class StockHistoryAction : IStockHistoryAction
@@ -19,12 +20,21 @@ namespace DatabaseProjectAPI.Actions
             _dpapiDbContext = dpapiDbContext;
         }
 
-        // Retrieve stock history by symbol
         public List<StockHistory> GetStockHistory(string symbol)
         {
             return _dpapiDbContext.StockHistories
                 .Where(sh => sh.Stock.Symbol == symbol)  
                 .OrderByDescending(sh => sh.Timestamp)  
+                .ToList();
+        }
+
+        public List<StockHistory> GetStockHistory(string symbol, DateTime fromDate, DateTime toDate)
+        {
+            return _dpapiDbContext.StockHistories
+                .Where(sh => sh.Stock.Symbol == symbol &&
+                             sh.Timestamp >= fromDate &&
+                             sh.Timestamp <= toDate) 
+                .OrderByDescending(sh => sh.Timestamp)
                 .ToList();
         }
     }
