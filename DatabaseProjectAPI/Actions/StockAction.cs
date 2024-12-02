@@ -1,9 +1,5 @@
 ﻿using DatabaseProjectAPI.DataContext;
 using DatabaseProjectAPI.Entities;
-using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace DatabaseProjectAPI.Actions
 {

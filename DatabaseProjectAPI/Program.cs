@@ -44,6 +44,8 @@ builder.Services.AddTransient<IStockHistoryAction, StockHistoryAction>();
 builder.Services.AddTransient<IApiRequestLogger, ApiRequestLogger>();
 builder.Services.AddTransient<IAutoDeleteService, AutoDeleteAction>();
 builder.Services.AddTransient<IStockAction, StockAction>();
+builder.Services.AddTransient<IMarketNewsAction, MarketNewsAction>();
+builder.Services.AddTransient<IEventsAction, EventsAction>();
 
 builder.Services.AddHostedService<DataCleanupBackgroundService>();
 builder.Services.AddHostedService<StockQuoteBackgroundService>();
