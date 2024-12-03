@@ -30,7 +30,7 @@ namespace DatabaseProjectAPI.Actions
 
             try
             {
-                // Use ExecuteDeleteAsync for efficient bulk deletion (EF Core 7.0+)
+                
                 int deletedCount = await _dbContext.StockHistories
                     .Where(sh => sh.Timestamp < ninetyDaysAgo)
                     .ExecuteDeleteAsync(cancellationToken);

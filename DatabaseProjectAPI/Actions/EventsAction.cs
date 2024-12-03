@@ -55,11 +55,12 @@ namespace DatabaseProjectAPI.Actions
         public async Task<decimal?> GetInflation()
         {
             var eventRecord = await _dbContext.Events
-                .Where(e => e.Inflation.HasValue)
-                .OrderByDescending(e => e.Datetime)
-                .FirstOrDefaultAsync();
+                .Where(e => e.Inflation.HasValue && e.Inflation > 0) 
+                .OrderByDescending(e => e.CreatedAt)
+                .ThenByDescending(e => e.Datetime)
+                .FirstOrDefaultAsync(); 
 
-            return eventRecord?.Inflation;
+            return eventRecord?.Inflation; 
         }
 
         public async Task<decimal?> GetCPI()
