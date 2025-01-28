@@ -71,13 +71,13 @@ namespace DatabaseProjectAPI.Services
 
             try
             {
-                // Resolve the AlphaVantageService within the existing scope
+                //Resolve the AlphaVantageService within the existing scope
                 var stockService = _serviceProvider.GetRequiredService<IAlphaVantageService>();
 
-                // Fetch data from the API
+                //Fetch data from the API
                 var stockQuote = await stockService.GetStockQuoteAsync(symbol);
 
-                // Check if there's an existing entry in `Stocks` for this tracked stock
+                //Check if there's an existing entry in `Stocks` for this tracked stock
                 var stock = await dbContext.Stocks
                     .FirstOrDefaultAsync(s => s.TrackedStockId == trackedStock.Id, cancellationToken);
 
