@@ -5,6 +5,6 @@ namespace KubsConnect.Settings
     public class DBConnectionSettings
     {
         [Required]
-        public string RyanWilliamDB { get; set; } = String.Empty;
+        public string MySqlDB { get; set; } = String.Empty;
     }
 }

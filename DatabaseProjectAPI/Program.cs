@@ -4,33 +4,33 @@ using KubsConnect.Settings;
 using DatabaseProjectAPI.Services;
 using KubsConnect;
 using DatabaseProjectAPI.Helpers;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Load configuration sources
-builder.Configuration
-    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-    .AddUserSecrets<Program>(optional: true)
-    .AddEnvironmentVariables();
-
-// Configure settings
-//builder.Services.Configure<FinnhubSettings>(builder.Configuration.GetSection("Finnhub"));
-//builder.Services.Configure<AlphaVantageSettings>(builder.Configuration.GetSection("AlphaVantage"));
-//builder.Services.Configure<NewsSettings>(builder.Configuration.GetSection("NewsAPI"));
-KubsClient client = new KubsClient(builder.Services, builder.Configuration, builder.Environment);
-
-// Configure DbContext
-//var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+string UserSecretsId = GetUserSecretsId();
+KubsClient client;
+if (UserSecretsId != null)
+{
+    builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true);
+    var config = new StartupConfig();
+    builder.Configuration.GetSection("StartupConfig").Bind(config);
+    client = new KubsClient(builder.Services, config);
+}
+else
+{
+    client = new KubsClient(builder.Services, builder.Configuration, builder.Environment);
+}
 
 builder.Services.AddDbContext<DpapiDbContext>(options =>
 {
-    options.UseMySql(client.config.DBConnectionSettings.RyanWilliamDB, 
-        ServerVersion.AutoDetect(client.config.DBConnectionSettings.RyanWilliamDB));
+    options.UseMySql(client.config.DBConnectionSettings.MySqlDB,
+        ServerVersion.AutoDetect(client.config.DBConnectionSettings.MySqlDB));
 });
 
 // Register services
 builder.Services.AddHealthChecks()
-    .AddMySql(client.config.DBConnectionSettings.RyanWilliamDB, name: "MySQL Database");
+    .AddMySql(client.config.DBConnectionSettings.MySqlDB, name: "MySQL Database");
 
 builder.Services.AddHttpClient<IFinnhubService, FinnhubService>();
 builder.Services.AddHttpClient<IAlphaVantageService, AlphaVantageService>();
@@ -52,7 +52,6 @@ builder.Services.AddHostedService<StockQuoteBackgroundService>();
 builder.Services.AddHostedService<NewsBackgroundService>();
 builder.Services.AddHostedService<EventsBackgroundService>();
 
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -70,3 +69,12 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
+
+string GetUserSecretsId()
+{
+    var attribute = typeof(Program).Assembly
+        .GetCustomAttribute(typeof(Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute))
+        as Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute;
+
+    return attribute?.UserSecretsId;
+}
