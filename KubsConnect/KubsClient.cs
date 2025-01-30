@@ -8,7 +8,14 @@ namespace KubsConnect;
 
 public class KubsClient : IKubsClient
 {
-    string K8SNameSpace = "default";
+    private string K8SNameSpace = "default";
+
+    /// <summary>
+    /// Constructor that will be used when running in a kubernetes cluster
+    /// </summary>
+    /// <param name="pservices"></param>
+    /// <param name="pconfig"></param>
+    /// <param name="env"></param>
     public KubsClient(IServiceCollection pservices, Microsoft.Extensions.Configuration.IConfiguration pconfig, IWebHostEnvironment env)
     {
         if (env.EnvironmentName.ToLower() != "prod")
@@ -22,6 +29,22 @@ public class KubsClient : IKubsClient
             this.config = this.GetSecret<StartupConfig>("databaseprojectapi");
         }
 
+        this.config!.AddClassToServices(pservices);
+    }
+
+    /// <summary>
+    /// Constrictor that will only be used when user secrets is available
+    /// </summary>
+    /// <param name="pservices"></param>
+    /// <param name="pconfig"></param>
+    /// <exception cref="Exception"></exception>
+    public KubsClient(IServiceCollection pservices, StartupConfig? pconfig)
+    {
+        if (pconfig == null)
+        {
+            throw new Exception("StartupConfig is null");
+        }
+        this.config = pconfig;
         this.config!.AddClassToServices(pservices);
     }
 
@@ -57,7 +80,6 @@ public class KubsClient : IKubsClient
                 }
                 else
                 {
-                
                     return JsonConvert.DeserializeObject<T>(secret);
                 }
             }
