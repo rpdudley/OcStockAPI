@@ -12,5 +12,5 @@ public class ApiCallLog
     public string? CallType { get; set; }
     [Required]
     [MaxLength(10)]
-    public string? Symbol { get; set; }   
+    public string? Symbol { get; set; }
 }

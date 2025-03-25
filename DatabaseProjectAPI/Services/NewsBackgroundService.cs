@@ -1,8 +1,5 @@
 ﻿using DatabaseProjectAPI.DataContext;
 using DatabaseProjectAPI.Entities;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace DatabaseProjectAPI.Services
 {

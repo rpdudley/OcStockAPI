@@ -1,9 +1,6 @@
-﻿using System;
-using System.Threading.Tasks;
-using DatabaseProjectAPI.Actions;
+﻿using DatabaseProjectAPI.Actions;
 using DatabaseProjectAPI.Helpers;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace DatabaseProjectAPI.Controllers
 {

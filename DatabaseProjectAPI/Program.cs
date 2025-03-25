@@ -1,9 +1,9 @@
 using DatabaseProjectAPI.Actions;
 using DatabaseProjectAPI.DataContext;
-using KubsConnect.Settings;
+using DatabaseProjectAPI.Helpers;
 using DatabaseProjectAPI.Services;
 using KubsConnect;
-using DatabaseProjectAPI.Helpers;
+using KubsConnect.Settings;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);

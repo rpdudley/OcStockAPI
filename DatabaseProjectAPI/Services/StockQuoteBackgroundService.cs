@@ -60,11 +60,11 @@ namespace DatabaseProjectAPI.Services
                     await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
                 }
 
-                
+
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
         }
-        private async Task FetchAndSaveStockDataAsync(DpapiDbContext dbContext, IApiRequestLogger apiRequestLogger, string callType, TrackedStock trackedStock, CancellationToken cancellationToken)
+        public async Task FetchAndSaveStockDataAsync(DpapiDbContext dbContext, IApiRequestLogger apiRequestLogger, string callType, TrackedStock trackedStock, CancellationToken cancellationToken)
         {
             var symbol = trackedStock.Symbol;
             _logger.LogInformation("FetchAndSaveStockDataAsync started for symbol {Symbol} with call type {CallType}", symbol, callType);
@@ -117,26 +117,26 @@ namespace DatabaseProjectAPI.Services
                     OpenedValue = stockQuote.Open,
                     ClosedValue = stockQuote.Price,
                     Volume = stockQuote.Volume,
-                    Stock = stock 
+                    Stock = stock
                 };
 
                 dbContext.StockHistories.Add(stockHistory);
 
                 await dbContext.SaveChangesAsync(cancellationToken);
 
-                
+
                 await apiRequestLogger.LogApiCallAsync(callType, symbol, cancellationToken);
                 _logger.LogInformation("Stock and history data saved successfully for {Symbol} at {Timestamp}", symbol, DateTime.UtcNow);
             }
             catch (ApiRateLimitExceededException ex)
             {
                 _logger.LogWarning(ex, "API rate limit exceeded while fetching data for symbol: {Symbol}", symbol);
-                
+
             }
             catch (InvalidApiResponseException ex)
             {
                 _logger.LogError(ex, "Invalid API response while fetching data for symbol: {Symbol}", symbol);
-                
+
             }
             catch (Exception ex)
             {

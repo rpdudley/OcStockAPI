@@ -1,9 +1,4 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-using DatabaseProjectAPI.DataContext;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+﻿using DatabaseProjectAPI.DataContext;
 
 namespace DatabaseProjectAPI.Actions
 {
@@ -30,7 +25,7 @@ namespace DatabaseProjectAPI.Actions
 
             try
             {
-                
+
                 int deletedCount = await _dbContext.StockHistories
                     .Where(sh => sh.Timestamp < ninetyDaysAgo)
                     .ExecuteDeleteAsync(cancellationToken);

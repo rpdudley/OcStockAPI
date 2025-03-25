@@ -1,6 +1,5 @@
 ﻿using DatabaseProjectAPI.Entities;
 using KubsConnect.Settings;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace DatabaseProjectAPI.Services

@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using DatabaseProjectAPI.Entities;
+﻿using DatabaseProjectAPI.Entities;
 using DatabaseProjectAPI.Entities.Settings;
 
 namespace DatabaseProjectAPI.DataContext

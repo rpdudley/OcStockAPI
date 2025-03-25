@@ -1,5 +1,4 @@
-﻿using System;
-using k8s;
+﻿using k8s;
 using KubsConnect.Settings;
 
 namespace KubsConnect;
