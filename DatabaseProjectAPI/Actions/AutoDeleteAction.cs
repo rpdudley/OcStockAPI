@@ -1,4 +1,5 @@
 ﻿using DatabaseProjectAPI.DataContext;
+using Microsoft.EntityFrameworkCore;
 
 namespace DatabaseProjectAPI.Actions
 {
@@ -25,14 +26,15 @@ namespace DatabaseProjectAPI.Actions
 
             try
             {
-
-                int deletedCount = await _dbContext.StockHistories
+                var oldHistories = await _dbContext.StockHistories
                     .Where(sh => sh.Timestamp < ninetyDaysAgo)
-                    .ExecuteDeleteAsync(cancellationToken);
+                    .ToListAsync(cancellationToken);
 
-                if (deletedCount > 0)
+                if (oldHistories.Any())
                 {
-                    _logger.LogInformation("{Count} old stock history records deleted.", deletedCount);
+                    _dbContext.StockHistories.RemoveRange(oldHistories);
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                    _logger.LogInformation("{Count} old stock history records deleted.", oldHistories.Count);
                 }
                 else
                 {
@@ -57,14 +59,15 @@ namespace DatabaseProjectAPI.Actions
 
             try
             {
-                // Use ExecuteDeleteAsync for efficient bulk deletion (EF Core 7.0+)
-                int deletedCount = await _dbContext.ApiCallLog
+                var oldLogs = await _dbContext.ApiCallLog
                     .Where(log => log.CallDate < ninetyDaysAgo)
-                    .ExecuteDeleteAsync(cancellationToken);
+                    .ToListAsync(cancellationToken);
 
-                if (deletedCount > 0)
+                if (oldLogs.Any())
                 {
-                    _logger.LogInformation("{Count} old API call log records deleted.", deletedCount);
+                    _dbContext.ApiCallLog.RemoveRange(oldLogs);
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                    _logger.LogInformation("{Count} old API call log records deleted.", oldLogs.Count);
                 }
                 else
                 {
