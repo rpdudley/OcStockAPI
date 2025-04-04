@@ -11,3 +11,4 @@ global using KubsConnect.Settings;
 global using Moq.Protected;
 global using Newtonsoft.Json;
 global using System.Net;
+global using DatabaseProjectAPI.Entities.Settings;
