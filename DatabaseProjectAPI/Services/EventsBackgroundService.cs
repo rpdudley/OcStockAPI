@@ -71,8 +71,6 @@ namespace DatabaseProjectAPI.Services
             }
         }
 
-
-
         private async Task FetchAndSaveFederalInterestRateAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
         {
             try
@@ -97,7 +95,6 @@ namespace DatabaseProjectAPI.Services
             }
         }
 
-
         private async Task FetchAndSaveUnemploymentRateAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
         {
             try
@@ -121,7 +118,6 @@ namespace DatabaseProjectAPI.Services
                 _logger.LogError(ex, "Failed to fetch or save unemployment rate data.");
             }
         }
-
 
         private async Task FetchAndSaveCPIAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
         {
@@ -149,13 +145,10 @@ namespace DatabaseProjectAPI.Services
             }
         }
 
-
-
         private async Task<Event> GetOrCreateEventAsync(IDpapiDbContext dbContext, DateTime date, CancellationToken stoppingToken)
         {
             // Try to find an existing event for the given date
             var existingEvent = await dbContext.Events.FirstOrDefaultAsync(e => e.Datetime.HasValue && e.Datetime.Value.Date == date.Date, stoppingToken);
-
 
             if (existingEvent != null)
             {
@@ -176,6 +169,5 @@ namespace DatabaseProjectAPI.Services
                 return newEvent;
             }
         }
-
     }
 }
