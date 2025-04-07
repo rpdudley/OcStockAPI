@@ -64,7 +64,7 @@ namespace DatabaseProjectAPI.Services
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
         }
-        private async Task FetchAndSaveStockDataAsync(DpapiDbContext dbContext, IApiRequestLogger apiRequestLogger, string callType, TrackedStock trackedStock, CancellationToken cancellationToken)
+        public async Task FetchAndSaveStockDataAsync(DpapiDbContext dbContext, IApiRequestLogger apiRequestLogger, string callType, TrackedStock trackedStock, CancellationToken cancellationToken)
         {
             var symbol = trackedStock.Symbol;
             _logger.LogInformation("FetchAndSaveStockDataAsync started for symbol {Symbol} with call type {CallType}", symbol, callType);

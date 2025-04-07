@@ -1,13 +1,4 @@
-﻿using DatabaseProjectAPI.DataContext;
-using DatabaseProjectAPI.Entities;
-using DatabaseProjectAPI.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Moq;
-
-namespace XUnitTests.ServiceTests;
-
+﻿namespace XUnitTests.ServiceTests;
 public class NewsBackgroundServiceTests
 {
     [Fact]

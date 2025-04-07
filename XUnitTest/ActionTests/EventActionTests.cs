@@ -1,9 +1,4 @@
-﻿using DatabaseProjectAPI.Actions;
-using DatabaseProjectAPI.DataContext;
-using Microsoft.EntityFrameworkCore;
-
-namespace XUnitTests.ActionTests;
-
+﻿namespace XUnitTests.ActionTests;
 public class EventsActionTests
 {
     private readonly DpapiDbContext _dbContext;

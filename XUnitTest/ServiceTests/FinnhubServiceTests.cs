@@ -1,88 +1,77 @@
-﻿using DatabaseProjectAPI.Entities;
-using DatabaseProjectAPI.Services;
-using KubsConnect.Settings;
-using Moq;
-using Moq.Protected;
-using Newtonsoft.Json;
-using System.Net;
-using System.Text;
-
-namespace XUnitTests.ServiceTests
+﻿namespace XUnitTests.ServiceTests;
+public class FinnhubServiceTests
 {
-    public class FinnhubServiceTests
+    private readonly Mock<HttpMessageHandler> _handlerMock;
+    private readonly HttpClient _httpClient;
+    private readonly FinnhubService _service;
+
+    public FinnhubServiceTests()
     {
-        private readonly Mock<HttpMessageHandler> _handlerMock;
-        private readonly HttpClient _httpClient;
-        private readonly FinnhubService _service;
+        _handlerMock = new Mock<HttpMessageHandler>();
+        _httpClient = new HttpClient(_handlerMock.Object);
 
-        public FinnhubServiceTests()
+        var settings = new FinnhubSettings
         {
-            _handlerMock = new Mock<HttpMessageHandler>();
-            _httpClient = new HttpClient(_handlerMock.Object);
+            ApiKey = "test-api-key"
+        };
 
-            var settings = new FinnhubSettings
-            {
-                ApiKey = "test-api-key"
-            };
+        _service = new FinnhubService(_httpClient, settings);
+    }
 
-            _service = new FinnhubService(_httpClient, settings);
-        }
-
-        [Fact]
-        public async Task GetStockDataAsync_ReturnsParsedJObject()
+    [Fact]
+    public async Task GetStockDataAsync_ReturnsParsedJObject()
+    {
+        var responseContent = new
         {
-            var responseContent = new
+            c = new[] { 150.1, 151.2 },
+            t = new[] { 1617753600, 1617840000 }
+        };
+
+        var json = JsonConvert.SerializeObject(responseContent);
+
+        _handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
             {
-                c = new[] { 150.1, 151.2 },
-                t = new[] { 1617753600, 1617840000 }
-            };
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            });
 
-            var json = JsonConvert.SerializeObject(responseContent);
+        var result = await _service.GetStockDataAsync("AAPL", DateTime.UtcNow.AddDays(-2), DateTime.UtcNow);
 
-            _handlerMock.Protected()
-                .Setup<Task<HttpResponseMessage>>(
-                    "SendAsync",
-                    ItExpr.IsAny<HttpRequestMessage>(),
-                    ItExpr.IsAny<CancellationToken>())
-                .ReturnsAsync(new HttpResponseMessage
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    Content = new StringContent(json, Encoding.UTF8, "application/json")
-                });
+        Assert.NotNull(result);
+        Assert.True(result.ContainsKey("c"));
+    }
 
-            var result = await _service.GetStockDataAsync("AAPL", DateTime.UtcNow.AddDays(-2), DateTime.UtcNow);
-
-            Assert.NotNull(result);
-            Assert.True(result.ContainsKey("c"));
-        }
-
-        [Fact]
-        public async Task MarkStatusAsync_ReturnsDeserializedStatus()
+    [Fact]
+    public async Task MarkStatusAsync_ReturnsDeserializedStatus()
+    {
+        var marketStatus = new FinnhubMarketStatus
         {
-            var marketStatus = new FinnhubMarketStatus
+            isOpen = false,
+            exchange = "US"
+        };
+
+        var json = JsonConvert.SerializeObject(marketStatus);
+
+        _handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
             {
-                isOpen = false,
-                exchange = "US"
-            };
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            });
 
-            var json = JsonConvert.SerializeObject(marketStatus);
+        var result = await _service.MarkStatusAsync();
 
-            _handlerMock.Protected()
-                .Setup<Task<HttpResponseMessage>>(
-                    "SendAsync",
-                    ItExpr.IsAny<HttpRequestMessage>(),
-                    ItExpr.IsAny<CancellationToken>())
-                .ReturnsAsync(new HttpResponseMessage
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    Content = new StringContent(json, Encoding.UTF8, "application/json")
-                });
-
-            var result = await _service.MarkStatusAsync();
-
-            Assert.NotNull(result);
-            Assert.False(result.isOpen);
-            Assert.Equal("US", result.exchange);
-        }
+        Assert.NotNull(result);
+        Assert.False(result.isOpen);
+        Assert.Equal("US", result.exchange);
     }
 }

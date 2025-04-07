@@ -1,71 +1,63 @@
-﻿using DatabaseProjectAPI.DataContext;
-using DatabaseProjectAPI.Entities;
-using DatabaseProjectAPI.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Moq;
-
-namespace XUnitTests.ServiceTests;
-
+﻿namespace XUnitTests.ServiceTests;
 public class EventsBackgroundServiceTests
 {
-    private readonly Mock<IServiceProvider> _serviceProviderMock;
-    private readonly Mock<IServiceScope> _serviceScopeMock;
-    private readonly Mock<IServiceScopeFactory> _scopeFactoryMock;
-    private readonly Mock<ILogger<EventsBackgroundService>> _loggerMock;
-    private readonly Mock<IAlphaVantageService> _alphaVantageServiceMock;
     private readonly DpapiDbContext _dbContext;
     private readonly EventsBackgroundService _service;
+    private readonly Mock<IAlphaVantageService> _alphaVantageServiceMock;
+    private readonly Mock<ILogger<EventsBackgroundService>> _loggerMock;
 
     public EventsBackgroundServiceTests()
     {
         var options = new DbContextOptionsBuilder<DpapiDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
         _dbContext = new DpapiDbContext(options);
-        _loggerMock = new Mock<ILogger<EventsBackgroundService>>();
         _alphaVantageServiceMock = new Mock<IAlphaVantageService>();
+        _loggerMock = new Mock<ILogger<EventsBackgroundService>>();
 
-        _serviceProviderMock = new Mock<IServiceProvider>();
-        _serviceScopeMock = new Mock<IServiceScope>();
-        _scopeFactoryMock = new Mock<IServiceScopeFactory>();
+        // ServiceProvider inside scope
+        var scopedProviderMock = new Mock<IServiceProvider>();
+        scopedProviderMock.Setup(x => x.GetService(typeof(DpapiDbContext))).Returns(_dbContext);
+        scopedProviderMock.Setup(x => x.GetService(typeof(IAlphaVantageService))).Returns(_alphaVantageServiceMock.Object);
 
-        _serviceScopeMock.Setup(s => s.ServiceProvider).Returns(_serviceProviderMock.Object);
-        _scopeFactoryMock.Setup(f => f.CreateScope()).Returns(_serviceScopeMock.Object);
+        var scopeMock = new Mock<IServiceScope>();
+        scopeMock.Setup(x => x.ServiceProvider).Returns(scopedProviderMock.Object);
 
-        _serviceProviderMock.Setup(x => x.GetService(typeof(IServiceScopeFactory)))
-            .Returns(_scopeFactoryMock.Object);
-        _serviceProviderMock.Setup(x => x.GetService(typeof(DpapiDbContext)))
-            .Returns(_dbContext);
-        _serviceProviderMock.Setup(x => x.GetService(typeof(IAlphaVantageService)))
-            .Returns(_alphaVantageServiceMock.Object);
+        var scopeFactoryMock = new Mock<IServiceScopeFactory>();
+        scopeFactoryMock.Setup(x => x.CreateScope()).Returns(scopeMock.Object);
 
-        _service = new EventsBackgroundService(_serviceProviderMock.Object, _loggerMock.Object);
+        var rootProviderMock = new Mock<IServiceProvider>();
+        rootProviderMock.Setup(x => x.GetService(typeof(IServiceScopeFactory))).Returns(scopeFactoryMock.Object);
+
+        _service = new EventsBackgroundService(rootProviderMock.Object, _loggerMock.Object);
     }
 
     [Fact]
     public async Task ExecuteAsync_CallsAllFetchMethods()
     {
-        // Arrange mock data
-        var now = DateTime.UtcNow;
+        // Arrange
+        var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
         _alphaVantageServiceMock.Setup(a => a.GetInflationAsync()).ReturnsAsync(
-            new Inflation { Data = new List<InflationDataPoint> { new InflationDataPoint { Date = now.ToString("yyyy-MM-dd"), Value = "3.5" } } });
+            new Inflation { Data = new List<InflationDataPoint> { new() { Date = today, Value = "3.5" } } });
         _alphaVantageServiceMock.Setup(a => a.GetFederalInterestRateAsync()).ReturnsAsync(
-            new FederalInterestRate { Data = new List<FederalInterestRateDataPoint> { new FederalInterestRateDataPoint { Date = now.ToString("yyyy-MM-dd"), Value = "4.5" } } });
+            new FederalInterestRate { Data = new List<FederalInterestRateDataPoint> { new() { Date = today, Value = "4.5" } } });
         _alphaVantageServiceMock.Setup(a => a.GetUnemploymentRateAsync()).ReturnsAsync(
-            new UnemploymentRate { Data = new List<UnemploymentRateDataPoint> { new UnemploymentRateDataPoint { Date = now.ToString("yyyy-MM-dd"), Value = "5.1" } } });
+            new UnemploymentRate { Data = new List<UnemploymentRateDataPoint> { new() { Date = today, Value = "5.1" } } });
         _alphaVantageServiceMock.Setup(a => a.GetCPIdataAsync()).ReturnsAsync(
-            new CPIdata { Data = new List<CpiDataPoint> { new CpiDataPoint { Date = now.ToString("yyyy-MM-dd"), Value = "260.7" } } });
+            new CPIdata { Data = new List<CpiDataPoint> { new() { Date = today, Value = "260.7" } } });
 
-        using var cancellationTokenSource = new CancellationTokenSource();
-        cancellationTokenSource.CancelAfter(200); // run briefly
+        var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
 
         // Act
-        await _service.StartAsync(cancellationTokenSource.Token);
+        await _service.StartAsync(cts.Token);
 
         // Assert
-        Assert.True(await _dbContext.Events.AnyAsync());
+        var @event = await _dbContext.Events.FirstOrDefaultAsync();
+        Assert.NotNull(@event);
+        Assert.Equal(3.5m, @event.Inflation);
+        Assert.Equal(4.5m, @event.FederalInterestRate);
+        Assert.Equal(5.1m, @event.UnemploymentRate);
+        Assert.Equal(260.7m, @event.CPI);
     }
 }

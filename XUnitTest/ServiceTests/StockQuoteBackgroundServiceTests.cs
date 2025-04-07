@@ -1,76 +1,63 @@
-﻿using DatabaseProjectAPI.Actions;
-using DatabaseProjectAPI.DataContext;
-using DatabaseProjectAPI.Entities;
-using DatabaseProjectAPI.Helpers;
-using DatabaseProjectAPI.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Moq;
-
-namespace XUnitTests.ServiceTests
+﻿namespace XUnitTests.ServiceTests;
+public class StockQuoteBackgroundServiceTests
 {
-    public class StockQuoteBackgroundServiceTests
+    [Fact]
+    public async Task FetchAndSaveStockDataAsync_SavesStockAndHistory_WhenCalled()
     {
-        private readonly Mock<ILogger<StockQuoteBackgroundService>> _loggerMock = new();
-        private readonly Mock<IFinnhubService> _finnhubServiceMock = new();
-        private readonly Mock<IAlphaVantageService> _alphaVantageServiceMock = new();
-        private readonly Mock<IApiRequestLogger> _apiRequestLoggerMock = new();
-        private readonly Mock<IAutoDeleteService> _autoDeleteServiceMock = new();
-        private readonly DbContextOptions<DpapiDbContext> _dbContextOptions;
+        // Arrange
+        var options = new DbContextOptionsBuilder<DpapiDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
 
-        public StockQuoteBackgroundServiceTests()
+        var dbContext = new DpapiDbContext(options);
+        var trackedStock = new TrackedStock { Id = 1, Symbol = "AAPL", StockName = "Apple Inc." };
+        dbContext.TrackedStocks.Add(trackedStock);
+        await dbContext.SaveChangesAsync();
+
+        var fakeQuote = new StockQuote
         {
-            _dbContextOptions = new DbContextOptionsBuilder<DpapiDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .Options;
-        }
+            Symbol = "AAPL",
+            Open = 180.00m,
+            Price = 185.50m,
+            Volume = 2000000,
+            LatestTradingDay = DateTime.UtcNow.Date
+        };
 
-        [Fact]
-        public async Task ExecuteAsync_FetchesAndSavesStockData_WhenMarketIsClosed()
-        {
-            // Arrange
-            var dbContext = new DpapiDbContext(_dbContextOptions);
-            var trackedStock = new TrackedStock { Id = 1, Symbol = "AAPL", StockName = "Apple Inc." };
-            dbContext.TrackedStocks.Add(trackedStock);
-            await dbContext.SaveChangesAsync();
+        var mockAlphaVantage = new Mock<IAlphaVantageService>();
+        mockAlphaVantage.Setup(x => x.GetStockQuoteAsync("AAPL")).ReturnsAsync(fakeQuote);
 
-            _finnhubServiceMock.Setup(s => s.MarkStatusAsync()).ReturnsAsync(new FinnhubMarketStatus { isOpen = false });
-            _apiRequestLoggerMock.Setup(s => s.HasMadeApiCallTodayAsync("MarketClose", trackedStock.Symbol, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-            _alphaVantageServiceMock.Setup(s => s.GetStockQuoteAsync(trackedStock.Symbol)).ReturnsAsync(new StockQuote
-            {
-                Symbol = trackedStock.Symbol,
-                Open = 150,
-                Price = 155,
-                Volume = 100000,
-                LatestTradingDay = DateTime.UtcNow.Date
-            });
+        var mockApiLogger = new Mock<IApiRequestLogger>();
 
-            var services = new ServiceCollection();
-            services.AddSingleton(_ => dbContext);
-            services.AddSingleton(_apiRequestLoggerMock.Object);
-            services.AddSingleton(_autoDeleteServiceMock.Object);
-            services.AddSingleton(_alphaVantageServiceMock.Object);
-            var serviceProvider = services.BuildServiceProvider();
+        var mockLogger = new Mock<ILogger<StockQuoteBackgroundService>>();
+        var mockFinnhubService = new Mock<IFinnhubService>();
 
-            var backgroundService = new StockQuoteBackgroundService(serviceProvider, _loggerMock.Object, _finnhubServiceMock.Object);
+        var mockServiceProvider = new Mock<IServiceProvider>();
+        mockServiceProvider.Setup(sp => sp.GetService(typeof(IAlphaVantageService)))
+                            .Returns(mockAlphaVantage.Object);
 
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var service = new StockQuoteBackgroundService(
+            mockServiceProvider.Object,
+            mockLogger.Object,
+            mockFinnhubService.Object
+        );
 
-            // Act
-            var runTask = backgroundService.StartAsync(cts.Token);
-            await Task.Delay(3000); // simulate execution time
-            cts.Cancel();
-            await runTask;
+        var cancellationToken = new CancellationToken();
 
-            // Assert
-            var savedStock = await dbContext.Stocks.FirstOrDefaultAsync();
-            Assert.NotNull(savedStock);
-            Assert.Equal(150, savedStock.OpenValue);
-            Assert.Equal(155, savedStock.ClosingValue);
-            var history = await dbContext.StockHistories.FirstOrDefaultAsync();
-            Assert.NotNull(history);
-            Assert.Equal(150, history.OpenedValue);
-        }
+        // Act
+        await service.FetchAndSaveStockDataAsync(dbContext, mockApiLogger.Object, "MarketClose", trackedStock, cancellationToken);
+
+        // Assert
+        var savedStock = await dbContext.Stocks.FirstOrDefaultAsync();
+        Assert.NotNull(savedStock);
+        Assert.Equal(185.50m, savedStock.ClosingValue);
+
+        var savedHistory = await dbContext.StockHistories.FirstOrDefaultAsync();
+        Assert.NotNull(savedHistory);
+        Assert.Equal(180.00m, savedHistory.OpenedValue);
+        Assert.Equal(185.50m, savedHistory.ClosedValue);
+        Assert.Equal(savedStock.StockId, savedHistory.Stock.StockId);
+
+        mockApiLogger.Verify(x =>
+            x.LogApiCallAsync("MarketClose", "AAPL", cancellationToken), Times.Once);
     }
 }

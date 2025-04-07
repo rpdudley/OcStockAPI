@@ -1,10 +1,4 @@
-﻿using DatabaseProjectAPI.Actions;
-using DatabaseProjectAPI.DataContext;
-using DatabaseProjectAPI.Entities;
-using Microsoft.EntityFrameworkCore;
-
-namespace XUnitTests.ActionTests;
-
+﻿namespace XUnitTests.ActionTests;
 public class TrackedStockActionTests
 {
     private DpapiDbContext _dbContext;

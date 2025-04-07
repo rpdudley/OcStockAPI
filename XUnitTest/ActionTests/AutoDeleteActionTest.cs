@@ -1,13 +1,4 @@
-using DatabaseProjectAPI.Actions;
-using DatabaseProjectAPI.DataContext;
-using DatabaseProjectAPI.Entities;
-using DatabaseProjectAPI.Entities.Settings;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Moq;
-
 namespace XUnitTests.ActionTests;
-
 public class AutoDeleteActionTests
 {
     private DpapiDbContext _dbContext;
