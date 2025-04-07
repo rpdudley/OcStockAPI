@@ -14,26 +14,26 @@ public class EventsBackgroundServiceTests
     [TestInitialize]
     public void Setup()
     {
-        // Setup in-memory DbContext
         var options = new DbContextOptionsBuilder<DpapiDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
+
         _dbContext = new DpapiDbContext(options);
 
-        // Create mocks
         _alphaServiceMock = new Mock<IAlphaVantageService>();
         _loggerMock = new Mock<ILogger<EventsBackgroundService>>();
         _serviceProviderMock = new Mock<IServiceProvider>();
         _serviceScopeMock = new Mock<IServiceScope>();
         _scopeFactoryMock = new Mock<IServiceScopeFactory>();
 
-        // Set up AlphaVantageService fake return values
+        string date = "2025-03-01";
+
         _alphaServiceMock.Setup(x => x.GetInflationAsync())
             .ReturnsAsync(new Inflation
             {
                 Data = new List<InflationDataPoint>
                 {
-            new InflationDataPoint { Date = "2025-03-01", Value = "3.2" }
+                    new() { Date = date, Value = "3.2" }
                 }
             });
 
@@ -42,7 +42,7 @@ public class EventsBackgroundServiceTests
             {
                 Data = new List<FederalInterestRateDataPoint>
                 {
-            new FederalInterestRateDataPoint { Date = "2025-03-01", Value = "5.1" }
+                    new() { Date = date, Value = "5.1" }
                 }
             });
 
@@ -51,7 +51,7 @@ public class EventsBackgroundServiceTests
             {
                 Data = new List<UnemploymentRateDataPoint>
                 {
-            new UnemploymentRateDataPoint { Date = "2025-03-01", Value = "3.7" }
+                    new() { Date = date, Value = "3.7" }
                 }
             });
 
@@ -60,35 +60,29 @@ public class EventsBackgroundServiceTests
             {
                 Data = new List<CpiDataPoint>
                 {
-            new CpiDataPoint { Date = "2025-03-01", Value = "299.5" }
+                    new() { Date = date, Value = "299.5" }
                 }
             });
 
-        // Setup mock service scope
-        _serviceScopeMock.Setup(x => x.ServiceProvider.GetService(typeof(DpapiDbContext)))
-            .Returns(_dbContext);
+        var scopeServiceProvider = new Mock<IServiceProvider>();
+        scopeServiceProvider.Setup(sp => sp.GetService(typeof(DpapiDbContext))).Returns(_dbContext);
+        scopeServiceProvider.Setup(sp => sp.GetService(typeof(IAlphaVantageService))).Returns(_alphaServiceMock.Object);
 
-        _serviceScopeMock.Setup(x => x.ServiceProvider.GetService(typeof(IAlphaVantageService)))
-            .Returns(_alphaServiceMock.Object);
-
+        _serviceScopeMock.Setup(x => x.ServiceProvider).Returns(scopeServiceProvider.Object);
         _scopeFactoryMock.Setup(x => x.CreateScope()).Returns(_serviceScopeMock.Object);
+        _serviceProviderMock.Setup(x => x.GetService(typeof(IServiceScopeFactory))).Returns(_scopeFactoryMock.Object);
 
-        // Setup service provider to return the scope factory
-        _serviceProviderMock.Setup(x => x.GetService(typeof(IServiceScopeFactory)))
-            .Returns(_scopeFactoryMock.Object);
-
-        // Construct the background service
         _service = new EventsBackgroundService(_serviceProviderMock.Object, _loggerMock.Object);
     }
-
 
     [TestMethod]
     public async Task ExecuteAsync_PerformsDataFetchAndSave()
     {
-        using var tokenSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
-        await _service.StartAsync(tokenSource.Token);
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+        await _service.StartAsync(cts.Token);
 
         var savedEvent = _dbContext.Events.FirstOrDefault();
+
         Assert.IsNotNull(savedEvent);
         Assert.AreEqual(3.2m, savedEvent.Inflation);
         Assert.AreEqual(5.1m, savedEvent.FederalInterestRate);
