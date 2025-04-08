@@ -1,4 +1,4 @@
-﻿namespace MSTests.ServicesTests;
+﻿namespace MSTests;
 
 [TestClass]
 public class EventsBackgroundServiceTests

@@ -1,4 +1,4 @@
-﻿namespace MSTests.ActionsTests;
+﻿namespace MSTests;
 
 [TestClass]
 public class AutoDeleteActionTests

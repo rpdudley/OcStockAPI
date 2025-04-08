@@ -1,4 +1,4 @@
-﻿namespace MSTests.HelpersTests;
+﻿namespace MSTests;
 
 [TestClass]
 public class ApiRequestLoggerTests
