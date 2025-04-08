@@ -1,4 +1,4 @@
-namespace NUnitTests.ServiceTests;
+namespace NUnitTests;
 
 public class NewsAPIServiceTests
 {

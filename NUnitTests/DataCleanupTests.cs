@@ -1,4 +1,4 @@
-﻿namespace NUnitTests.ServiceTests;
+﻿namespace NUnitTests;
 
 [TestFixture]
 public class DataCleanupBackgroundServiceTests

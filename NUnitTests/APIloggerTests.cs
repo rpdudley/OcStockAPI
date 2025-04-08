@@ -1,4 +1,4 @@
-﻿namespace NUnitTests.HelpersTests;
+﻿namespace NUnitTests;
 
 public class ApiRequestLoggerTests
 {

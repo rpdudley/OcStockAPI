@@ -1,4 +1,4 @@
-﻿namespace NUnitTests.ActionsTests;
+﻿namespace NUnitTests;
 
 public class AutoDeleteActionTests
 {
