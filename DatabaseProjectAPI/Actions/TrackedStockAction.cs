@@ -5,8 +5,8 @@ namespace DatabaseProjectAPI.Actions;
 
 public interface ITrackedStockAction
 {
-    List<TrackedStock> GetTrackedStocks(string symbol= " ");      
-    void AddTrackedStock(TrackedStock stock);   
+    List<TrackedStock> GetTrackedStocks(string symbol = " ");
+    void AddTrackedStock(TrackedStock stock);
 }
 
 public class TrackedStockAction : ITrackedStockAction
@@ -20,7 +20,7 @@ public class TrackedStockAction : ITrackedStockAction
     public List<TrackedStock> GetTrackedStocks(string symbol = "")
     {
         return _dpapiDbContext.TrackedStocks
-            .Where(s => string.IsNullOrEmpty(symbol) || s.Symbol.StartsWith(symbol)) 
+            .Where(s => string.IsNullOrEmpty(symbol) || s.Symbol.StartsWith(symbol))
             .OrderBy(s => s.Id)
             .ToList();
     }

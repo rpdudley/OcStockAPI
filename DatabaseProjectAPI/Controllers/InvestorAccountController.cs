@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using DatabaseProjectAPI.Actions;
+﻿using DatabaseProjectAPI.Actions;
+using Microsoft.AspNetCore.Mvc;
 
 namespace DatabaseProjectAPI.Controllers
 {

@@ -1,7 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using DatabaseProjectAPI.Services;
-using System;
-using System.Threading.Tasks;
+﻿using DatabaseProjectAPI.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace DatabaseProjectAPI.Controllers
 {

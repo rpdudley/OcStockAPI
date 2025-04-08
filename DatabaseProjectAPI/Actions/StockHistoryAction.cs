@@ -1,7 +1,5 @@
 ﻿using DatabaseProjectAPI.DataContext;
 using DatabaseProjectAPI.Entities;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace DatabaseProjectAPI.Actions
 {
@@ -23,8 +21,8 @@ namespace DatabaseProjectAPI.Actions
         public List<StockHistory> GetStockHistory(string symbol)
         {
             return _dpapiDbContext.StockHistories
-                .Where(sh => sh.Stock.Symbol == symbol)  
-                .OrderByDescending(sh => sh.Timestamp)  
+                .Where(sh => sh.Stock.Symbol == symbol)
+                .OrderByDescending(sh => sh.Timestamp)
                 .ToList();
         }
 
@@ -33,7 +31,7 @@ namespace DatabaseProjectAPI.Actions
             return _dpapiDbContext.StockHistories
                 .Where(sh => sh.Stock.Symbol == symbol &&
                              sh.Timestamp >= fromDate &&
-                             sh.Timestamp <= toDate) 
+                             sh.Timestamp <= toDate)
                 .OrderByDescending(sh => sh.Timestamp)
                 .ToList();
         }

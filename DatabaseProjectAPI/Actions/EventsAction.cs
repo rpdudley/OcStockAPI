@@ -1,9 +1,4 @@
 ﻿using DatabaseProjectAPI.DataContext;
-using DatabaseProjectAPI.Entities;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace DatabaseProjectAPI.Actions
 {
@@ -55,12 +50,12 @@ namespace DatabaseProjectAPI.Actions
         public async Task<decimal?> GetInflation()
         {
             var eventRecord = await _dbContext.Events
-                .Where(e => e.Inflation.HasValue && e.Inflation > 0) 
+                .Where(e => e.Inflation.HasValue && e.Inflation > 0)
                 .OrderByDescending(e => e.CreatedAt)
                 .ThenByDescending(e => e.Datetime)
-                .FirstOrDefaultAsync(); 
+                .FirstOrDefaultAsync();
 
-            return eventRecord?.Inflation; 
+            return eventRecord?.Inflation;
         }
 
         public async Task<decimal?> GetCPI()

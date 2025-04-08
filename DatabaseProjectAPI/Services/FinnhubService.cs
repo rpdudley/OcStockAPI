@@ -1,12 +1,7 @@
-﻿using System;
-using System.Net.Http;
-using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
+﻿using DatabaseProjectAPI.Entities;
 using KubsConnect.Settings;
-using Microsoft.Extensions.Options;
-using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
-using DatabaseProjectAPI.Entities;
+using Newtonsoft.Json.Linq;
 
 namespace DatabaseProjectAPI.Services
 {
@@ -46,7 +41,7 @@ namespace DatabaseProjectAPI.Services
             string url = $"https://finnhub.io/api/v1/stock/market-status?exchange=US&token={_apiKey}";
             HttpResponseMessage response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
-            
+
             return JsonConvert.DeserializeObject<FinnhubMarketStatus>(await response.Content.ReadAsStringAsync());
         }
     }

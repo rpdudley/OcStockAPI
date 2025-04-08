@@ -73,7 +73,7 @@ namespace DatabaseProjectAPI.Services
 
 
 
-        private async Task FetchAndSaveFederalInterestRateAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
+        public async Task FetchAndSaveFederalInterestRateAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
         {
             try
             {
@@ -98,7 +98,7 @@ namespace DatabaseProjectAPI.Services
         }
 
 
-        private async Task FetchAndSaveUnemploymentRateAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
+        public async Task FetchAndSaveUnemploymentRateAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
         {
             try
             {
@@ -123,7 +123,7 @@ namespace DatabaseProjectAPI.Services
         }
 
 
-        private async Task FetchAndSaveCPIAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
+        public async Task FetchAndSaveCPIAsync(IDpapiDbContext dbContext, IAlphaVantageService alphaVantageService, CancellationToken stoppingToken)
         {
             try
             {
@@ -151,7 +151,7 @@ namespace DatabaseProjectAPI.Services
 
 
 
-        private async Task<Event> GetOrCreateEventAsync(IDpapiDbContext dbContext, DateTime date, CancellationToken stoppingToken)
+        public async Task<Event> GetOrCreateEventAsync(IDpapiDbContext dbContext, DateTime date, CancellationToken stoppingToken)
         {
             // Try to find an existing event for the given date
             var existingEvent = await dbContext.Events.FirstOrDefaultAsync(e => e.Datetime.HasValue && e.Datetime.Value.Date == date.Date, stoppingToken);

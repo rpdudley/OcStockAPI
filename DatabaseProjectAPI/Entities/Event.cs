@@ -1,10 +1,4 @@
-﻿using DatabaseProjectAPI.Entities;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
-[Table("Events")]
+﻿[Table("Events")]
 public class Event
 {
     [Key]
