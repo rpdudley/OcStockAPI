@@ -1,4 +1,4 @@
-﻿namespace XUnitTests.HelperTests;
+﻿namespace XUnitTests;
 public class ApiRequestLoggerTests
 {
     private readonly DpapiDbContext _dbContext;

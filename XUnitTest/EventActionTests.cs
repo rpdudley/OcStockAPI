@@ -1,4 +1,4 @@
-﻿namespace XUnitTests.ActionTests;
+﻿namespace XUnitTests;
 public class EventsActionTests
 {
     private readonly DpapiDbContext _dbContext;

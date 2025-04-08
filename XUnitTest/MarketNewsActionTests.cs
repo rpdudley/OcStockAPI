@@ -1,4 +1,4 @@
-﻿namespace XUnitTests.ActionTests;
+﻿namespace XUnitTests;
 public class MarketNewsActionTests
 {
     private DpapiDbContext GetInMemoryDbContext()

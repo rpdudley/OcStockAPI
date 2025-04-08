@@ -1,4 +1,4 @@
-﻿namespace XUnitTests.ServiceTests;
+﻿namespace XUnitTests;
 public class EventsBackgroundServiceTests
 {
     private readonly DpapiDbContext _dbContext;

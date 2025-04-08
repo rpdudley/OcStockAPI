@@ -1,4 +1,4 @@
-﻿namespace XUnitTests.ServiceTests;
+﻿namespace XUnitTests;
 public class FinnhubServiceTests
 {
     private readonly Mock<HttpMessageHandler> _handlerMock;

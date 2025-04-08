@@ -1,4 +1,4 @@
-namespace XUnitTests.ActionTests;
+namespace XUnitTests;
 public class AutoDeleteActionTests
 {
     private DpapiDbContext _dbContext;

@@ -1,4 +1,4 @@
-﻿namespace XUnitTests.ActionTests;
+﻿namespace XUnitTests;
 public class TrackedStockActionTests
 {
     private DpapiDbContext _dbContext;
