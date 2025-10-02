@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: ocstockapi
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:10000
+      - key: PORT
+        value: 10000
+      # Add your API keys as environment variables in Render dashboard:
+      # - ALPHAVANTAGE__APIKEY
+      # - NEWSAPI__APIKEY  
+      # - FINNHUB__APIKEY
+      # - DATABASE__CONNECTIONSTRING or DATABASE_URL
+
+databases:
+  - name: ocstockapi-db
+    databaseName: ocstockapi
+    user: admin
