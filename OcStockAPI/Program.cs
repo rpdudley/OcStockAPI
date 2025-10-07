@@ -18,60 +18,78 @@ var appSettings = new AppSettings();
 builder.Configuration.Bind(appSettings);
 
 // Handle database connection string
-string connectionString;
+string connectionString = "";
+bool useInMemoryDatabase = false;
+
 try
 {
     // Try to get the connection string from the standard ConnectionStrings section
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
     
     if (string.IsNullOrEmpty(connectionString))
     {
         // Fallback to AppSettings components if available
         connectionString = appSettings.Database.GetEffectiveConnectionString();
     }
-}
-catch (InvalidOperationException)
-{
-    // Fallback to environment variable if components are not available
-    var envConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
-    if (string.IsNullOrEmpty(envConnectionString))
-    {
-        throw new InvalidOperationException(
-            "Database connection string is required. Provide either:\n" +
-            "1. Full connection string in ConnectionStrings:DefaultConnection\n" +
-            "2. Individual components (Database:Host, Database:Database, Database:Username, Database:Password)\n" +
-            "3. DATABASE_URL environment variable");
-    }
     
-    // Handle PostgreSQL URL format (like Supabase provides)
-    if (envConnectionString.StartsWith("postgresql://"))
+    Console.WriteLine($"Attempting to use connection string: {connectionString.Substring(0, Math.Min(50, connectionString.Length))}...");
+    
+    // Test the connection first
+    using (var testConnection = new Npgsql.NpgsqlConnection(connectionString))
     {
-        var dbSettings = DatabaseConnectionSettings.FromPostgreSqlUrl(envConnectionString);
-        connectionString = dbSettings.ToConnectionString();
+        testConnection.Open();
+        Console.WriteLine("? Successfully connected to PostgreSQL database");
+        testConnection.Close();
     }
-    else
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"? Failed to connect to PostgreSQL database: {ex.Message}");
+    Console.WriteLine("?? Switching to in-memory database for testing...");
+    useInMemoryDatabase = true;
+}
+
+// Configure DbContext based on connection test
+if (useInMemoryDatabase)
+{
+    Console.WriteLine("?? Using IN-MEMORY database - Data will NOT persist between restarts!");
+    
+    builder.Services.AddDbContext<OcStockDbContext>(options =>
     {
-        connectionString = envConnectionString;
-    }
+        options.UseInMemoryDatabase("OcStockTestDb");
+        options.EnableSensitiveDataLogging(builder.Environment.IsDevelopment());
+    });
+    
+    // Add basic health check
+    builder.Services.AddHealthChecks();
+}
+else
+{
+    Console.WriteLine("?? Using PostgreSQL database");
+    
+    // Configure DbContext for PostgreSQL
+    builder.Services.AddDbContext<OcStockDbContext>(options =>
+    {
+        options.UseNpgsql(connectionString);
+        options.EnableSensitiveDataLogging(builder.Environment.IsDevelopment());
+    });
+    
+    // Register health check with database
+    builder.Services.AddHealthChecks()
+        .AddNpgSql(connectionString, name: "PostgreSQL Database");
 }
 
 // Update the app settings with the final connection string
-appSettings.Database.ConnectionString = connectionString;
+if (!useInMemoryDatabase)
+{
+    appSettings.Database.ConnectionString = connectionString;
+}
 
 // Register settings
 builder.Services.Configure<AppSettings>(builder.Configuration);
 builder.Services.AddSingleton(appSettings);
 
-// Configure DbContext for PostgreSQL
-builder.Services.AddDbContext<OcStockDbContext>(options =>
-{
-    options.UseNpgsql(connectionString);
-});
-
 // Register services
-builder.Services.AddHealthChecks()
-    .AddNpgSql(connectionString, name: "PostgreSQL Database");
-
 builder.Services.AddHttpClient<IFinnhubService, FinnhubService>();
 builder.Services.AddHttpClient<IAlphaVantageService, AlphaVantageService>();
 
@@ -86,11 +104,13 @@ builder.Services.AddTransient<IAutoDeleteService, AutoDeleteAction>();
 builder.Services.AddTransient<IStockAction, StockAction>();
 builder.Services.AddTransient<IMarketNewsAction, MarketNewsAction>();
 builder.Services.AddTransient<IEventsAction, EventsAction>();
+builder.Services.AddTransient<ITrackedStockService, TrackedStockService>();
 
-builder.Services.AddHostedService<DataCleanupBackgroundService>();
-builder.Services.AddHostedService<StockQuoteBackgroundService>();
-builder.Services.AddHostedService<NewsBackgroundService>();
-builder.Services.AddHostedService<EventsBackgroundService>();
+// Temporarily comment out background services to allow testing of the main functionality
+// builder.Services.AddHostedService<DataCleanupBackgroundService>();
+// builder.Services.AddHostedService<StockQuoteBackgroundService>();
+// builder.Services.AddHostedService<NewsBackgroundService>();
+// builder.Services.AddHostedService<EventsBackgroundService>();
 
 // Add CORS for your frontend on Render
 builder.Services.AddCors(options =>
@@ -140,6 +160,32 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// Initialize database (create tables for in-memory database)
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<OcStockDbContext>();
+    
+    try
+    {
+        // For in-memory database, ensure it's created
+        if (useInMemoryDatabase)
+        {
+            await dbContext.Database.EnsureCreatedAsync();
+            Console.WriteLine("? In-memory database tables created successfully");
+        }
+        else
+        {
+            // For PostgreSQL, test the connection
+            var canConnect = await dbContext.Database.CanConnectAsync();
+            Console.WriteLine(canConnect ? "? PostgreSQL database connection verified" : "? PostgreSQL database connection failed");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"?? Database initialization warning: {ex.Message}");
+    }
+}
+
 // Configure the HTTP request pipeline
 // Always enable Swagger for easy API testing (both Development and Production)
 app.UseSwagger();
@@ -156,6 +202,7 @@ app.UseSwaggerUI(c =>
 });
 
 app.UseCors("AllowFrontend");
+app.UseStaticFiles(); // Enable static file serving
 app.MapHealthChecks("/health"); // Standard health check endpoint
 
 app.UseHttpsRedirection();

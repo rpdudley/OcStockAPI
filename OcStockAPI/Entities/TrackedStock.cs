@@ -10,6 +10,9 @@ public class TrackedStock
     public string? Symbol { get; set; }
     public string? StockName { get; set; }
 
+    [Column("date_added")]
+    public DateTime? DateAdded { get; set; }
+
     // Navigation Property to Stocks
-    public ICollection<Stock> Stocks { get; set; }
+    public ICollection<Stock> Stocks { get; set; } = new List<Stock>();
 }

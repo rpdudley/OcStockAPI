@@ -2,6 +2,7 @@ using OcStockAPI.Actions;
 using OcStockAPI.DataContext;
 using OcStockAPI.Entities;
 using OcStockAPI.Helpers;
+using OcStockAPI.Services;
 using static OcStockAPI.Services.AlphaVantageService;
 
 namespace OcStockAPI.Services
@@ -30,37 +31,76 @@ namespace OcStockAPI.Services
             {
                 var currentTime = DateTime.UtcNow;
 
-                if (currentTime.Hour == 22 && currentTime.Minute == 0 || currentTime.Minute == 1)
+                if (currentTime.Hour == 22 && (currentTime.Minute == 0 || currentTime.Minute == 1))
                 {
                     using (var scope = _serviceProvider.CreateScope())
                     {
                         var dbContext = scope.ServiceProvider.GetRequiredService<OcStockDbContext>();
                         var apiRequestLogger = scope.ServiceProvider.GetRequiredService<IApiRequestLogger>();
                         var autoDeleteService = scope.ServiceProvider.GetRequiredService<IAutoDeleteService>();
+                        var trackedStockService = scope.ServiceProvider.GetRequiredService<ITrackedStockService>();
 
-                        // Perform cleanup tasks
+                        // Perform cleanup tasks first
                         await autoDeleteService.DeleteOldStockHistoryAsync(stoppingToken);
                         await autoDeleteService.DeleteOldApiCallLogsAsync(stoppingToken);
 
-                        var trackedStocks = await dbContext.TrackedStocks.ToListAsync(stoppingToken);
+                        // Get tracked stocks (max 20)
+                        var trackedStocksResponse = await trackedStockService.GetAllTrackedStocksAsync();
+                        
+                        if (!trackedStocksResponse.Success || trackedStocksResponse.TrackedStocks == null)
+                        {
+                            _logger.LogWarning("Failed to retrieve tracked stocks or no stocks to track");
+                            await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
+                            continue;
+                        }
+
+                        var trackedStocks = await dbContext.TrackedStocks
+                            .Take(20) // Ensure we never process more than 20 stocks
+                            .ToListAsync(stoppingToken);
+
+                        _logger.LogInformation("Processing {Count} tracked stocks (max 20 allowed)", trackedStocks.Count);
 
                         var marketStatus = await _finnhubService.MarkStatusAsync();
                         if (!marketStatus.isOpen)
                         {
+                            int processedCount = 0;
+                            int maxDailyCalls = 20; // Reserve 5 calls for other services
+
                             foreach (var trackedStock in trackedStocks)
                             {
-                                if (!await apiRequestLogger.HasMadeApiCallTodayAsync("MarketClose", trackedStock.Symbol, stoppingToken))
+                                if (processedCount >= maxDailyCalls)
                                 {
-                                    _logger.LogInformation("Market is closed, fetching end-of-day stock data for symbol: {Symbol}", trackedStock.Symbol);
+                                    _logger.LogWarning("Reached daily API call limit ({MaxCalls}). Stopping stock processing.", maxDailyCalls);
+                                    break;
+                                }
+
+                                if (!await apiRequestLogger.HasMadeApiCallTodayAsync("MarketClose", trackedStock.Symbol ?? string.Empty, stoppingToken))
+                                {
+                                    _logger.LogInformation("Market is closed, fetching end-of-day stock data for symbol: {Symbol} ({ProcessedCount}/{MaxCalls})", 
+                                        trackedStock.Symbol, processedCount + 1, maxDailyCalls);
+                                    
                                     await FetchAndSaveStockDataAsync(dbContext, apiRequestLogger, "MarketClose", trackedStock, stoppingToken);
+                                    processedCount++;
+                                    
+                                    // Add delay between API calls to respect rate limits
+                                    await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
                                 }
                             }
+
+                            _logger.LogInformation("Completed processing {ProcessedCount} stocks out of {TotalStocks} tracked stocks", 
+                                processedCount, trackedStocks.Count);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Market is open, skipping end-of-day data collection");
                         }
                     }
+                    
+                    // Wait 24 hours before next run
                     await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
                 }
 
-                
+                // Check every minute
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
         }
