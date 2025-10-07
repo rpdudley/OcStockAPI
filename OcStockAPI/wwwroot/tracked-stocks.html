@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracked Stocks Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .stock-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        input, button {
+            padding: 8px 12px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .delete-btn {
+            background: #dc3545;
+        }
+        .delete-btn:hover {
+            background: #c82333;
+        }
+        .test-btn {
+            background: #28a745;
+        }
+        .test-btn:hover {
+            background: #218838;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .limit-info {
+            text-align: center;
+            font-weight: bold;
+            color: #333;
+        }
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Stock Tracking Management</h1>
+    
+    <div class="container">
+        <h3>System Status</h3>
+        <button class="test-btn" onclick="testAPI()">Test API Connection</button>
+        <button class="test-btn" onclick="checkHealth()">Check Health</button>
+        <div id="apiStatus"></div>
+        <div id="debugInfo" class="debug-info" style="display: none;"></div>
+    </div>
+    
+    <div class="container">
+        <div id="limitInfo" class="limit-info">Loading...</div>
+        
+        <h3>Add New Stock</h3>
+        <div>
+            <input type="text" id="symbolInput" placeholder="Stock Symbol (e.g., AAPL)" maxlength="10">
+            <input type="text" id="nameInput" placeholder="Company Name (optional)" maxlength="100">
+            <button onclick="addStock()">Add Stock</button>
+        </div>
+        
+        <div id="status"></div>
+    </div>
+
+    <div class="container">
+        <h3>Currently Tracked Stocks</h3>
+        <button onclick="loadStocks()">Refresh List</button>
+        <div id="stocksList"></div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/trackedstocks';
+        let debugMode = true;
+
+        function log(message, data = null) {
+            if (debugMode) {
+                const timestamp = new Date().toISOString();
+                const logEntry = `${timestamp}: ${message}`;
+                console.log(logEntry, data);
+                
+                const debugDiv = document.getElementById('debugInfo');
+                debugDiv.style.display = 'block';
+                debugDiv.textContent += logEntry + (data ? '\n' + JSON.stringify(data, null, 2) : '') + '\n\n';
+            }
+        }
+
+        async function checkHealth() {
+            log('Checking system health...');
+            showStatus('Checking system health...', 'info');
+            
+            try {
+                const response = await fetch('/health', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                log('Health check response:', response.status);
+                
+                if (response.ok) {
+                    const healthText = await response.text();
+                    log('Health check result:', healthText);
+                    
+                    if (healthText === 'Healthy') {
+                        showStatus('System is healthy and ready!', 'success');
+                    } else {
+                        showStatus(`System status: ${healthText}`, 'warning');
+                    }
+                } else {
+                    showStatus(`Health check failed: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('Health check error:', error);
+                showStatus(`Health check error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAPI() {
+            log('Testing API connection...');
+            showStatus('Testing API connection...', 'info');
+            
+            try {
+                // Test basic connectivity
+                const response = await fetch(API_BASE, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log('API Response Status:', response.status);
+                log('API Response Headers:', Object.fromEntries(response.headers));
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('API Response Data:', data);
+                    showStatus(`API Connection OK (${response.status}). Found ${data.trackedStocks?.length || 0} tracked stocks.`, 'success');
+                } else {
+                    const errorText = await response.text();
+                    log('API Error Response:', errorText);
+                    showStatus(`API Error: ${response.status} - ${errorText}`, 'error');
+                }
+            } catch (error) {
+                log('API Test Failed:', error);
+                showStatus(`Connection Failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadStocks() {
+            log('Loading stocks...');
+            try {
+                const response = await fetch(API_BASE);
+                log('Load stocks response:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log('Load stocks data:', data);
+                
+                if (data.success && data.trackedStocks) {
+                    displayStocks(data.trackedStocks);
+                    showStatus(`Loaded ${data.trackedStocks.length} tracked stocks`, 'success');
+                } else {
+                    showStatus('Failed to load stocks: ' + (data.message || 'Unknown error'), 'error');
+                }
+                
+                await loadCount();
+            } catch (error) {
+                log('Load stocks error:', error);
+                showStatus('Error loading stocks: ' + error.message, 'error');
+            }
+        }
+
+        async function loadCount() {
+            log('Loading count...');
+            try {
+                const response = await fetch(`${API_BASE}/count`);
+                log('Load count response:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log('Load count data:', data);
+                
+                document.getElementById('limitInfo').innerHTML = 
+                    `Tracked Stocks: ${data.currentCount}/${data.maxAllowed} (${data.remaining} remaining)`;
+            } catch (error) {
+                log('Load count error:', error);
+                document.getElementById('limitInfo').innerHTML = 'Error loading count';
+                console.error('Error loading count:', error);
+            }
+        }
+
+        function displayStocks(stocks) {
+            const container = document.getElementById('stocksList');
+            
+            if (stocks.length === 0) {
+                container.innerHTML = '<p>No stocks currently tracked.</p>';
+                return;
+            }
+            
+            container.innerHTML = stocks.map(stock => `
+                <div class="stock-item">
+                    <div>
+                        <strong>${stock.symbol}</strong>
+                        ${stock.stockName ? ` - ${stock.stockName}` : ''}
+                        <small>(Added: ${new Date(stock.dateAdded).toLocaleDateString()})</small>
+                    </div>
+                    <button class="delete-btn" onclick="removeStock(${stock.id}, '${stock.symbol}')">
+                        Remove
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function addStock() {
+            const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
+            const name = document.getElementById('nameInput').value.trim();
+            
+            log('Adding stock:', { symbol, name });
+            
+            if (!symbol) {
+                showStatus('Please enter a stock symbol', 'error');
+                return;
+            }
+            
+            const requestData = {
+                symbol: symbol,
+                stockName: name || null
+            };
+            
+            log('Request data:', requestData);
+            
+            try {
+                showStatus('Adding stock...', 'info');
+                
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                log('Add stock response status:', response.status);
+                log('Add stock response headers:', Object.fromEntries(response.headers));
+                
+                let data;
+                try {
+                    data = await response.json();
+                    log('Add stock response data:', data);
+                } catch (parseError) {
+                    log('Failed to parse response as JSON:', parseError);
+                    const responseText = await response.text();
+                    log('Raw response text:', responseText);
+                    throw new Error(`Invalid JSON response: ${responseText}`);
+                }
+                
+                if (response.ok && data.success) {
+                    showStatus(data.message, 'success');
+                    document.getElementById('symbolInput').value = '';
+                    document.getElementById('nameInput').value = '';
+                    await loadStocks();
+                } else {
+                    const errorMessage = data.message || `HTTP ${response.status}: ${response.statusText}`;
+                    showStatus('Failed to add stock: ' + errorMessage, 'error');
+                }
+            } catch (error) {
+                log('Add stock error:', error);
+                showStatus('Error adding stock: ' + error.message, 'error');
+            }
+        }
+
+        async function removeStock(id, symbol) {
+            if (!confirm(`Remove ${symbol} from tracking?`)) {
+                return;
+            }
+            
+            log('Removing stock:', { id, symbol });
+            
+            try {
+                const response = await fetch(`${API_BASE}/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                log('Remove stock response:', response.status);
+                
+                const data = await response.json();
+                log('Remove stock data:', data);
+                
+                if (data.success) {
+                    showStatus(data.message, 'success');
+                    await loadStocks();
+                } else {
+                    showStatus(data.message, 'error');
+                }
+            } catch (error) {
+                log('Remove stock error:', error);
+                showStatus('Error removing stock: ' + error.message, 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status ' + type;
+            statusDiv.textContent = message;
+            
+            // Don't auto-clear error messages so quickly
+            const clearTimeout = type === 'error' ? 10000 : 5000;
+            
+            setTimeout(() => {
+                statusDiv.textContent = '';
+                statusDiv.className = '';
+            }, clearTimeout);
+        }
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Page loaded, initializing...');
+            loadStocks();
+        });
+
+        // Add stock on Enter key
+        document.getElementById('symbolInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addStock();
+            }
+        });
+    </script>
+</body>
+</html>
