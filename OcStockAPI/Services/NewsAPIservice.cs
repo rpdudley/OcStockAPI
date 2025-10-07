@@ -1,0 +1,57 @@
+using OcStockAPI.Entities;
+using OcStockAPI.Settings;
+using Microsoft.Extensions.Options;
+using System.Text.Json;
+
+namespace OcStockAPI.Services
+{
+    public interface INewsAPIService
+    {
+        Task<List<Article>> GetNewsDataAsync(string name, DateTime from, DateTime to);
+    }
+    
+    public class NewsAPIService : INewsAPIService
+    {
+        private readonly HttpClient _httpClient;
+        private readonly string _apiKey;
+        private readonly JsonSerializerOptions _jsonOptions;
+
+        public NewsAPIService(HttpClient httpClient, IOptions<AppSettings> settings)
+        {
+            _httpClient = httpClient;
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", "RyanStockApp/1.0");
+            _apiKey = Environment.GetEnvironmentVariable("NEWSAPI__APIKEY") ?? settings.Value.NewsAPI.ApiKey;
+            _jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+        }
+
+        public async Task<List<Article>> GetNewsDataAsync(string name, DateTime from, DateTime to)
+        {
+            string fromDate = from.ToString("yyyy-MM-dd");
+            string toDate = to.ToString("yyyy-MM-dd");
+
+            var url = $"https://newsapi.org/v2/everything?q={Uri.EscapeDataString(name)}&from={fromDate}&to={toDate}&sortBy=popularity&apiKey={_apiKey}";
+
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("User-Agent", "RyanStockApp/1.0");
+
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+
+                var articlesResponse = JsonSerializer.Deserialize<NewsApiResponse>(jsonResponse, _jsonOptions);
+                return articlesResponse?.Articles ?? new List<Article>();
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"Request to News API failed with status code: {response.StatusCode}, Content: {errorContent}");
+            }
+        }
+    }
+}
