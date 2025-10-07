@@ -21,7 +21,14 @@ builder.Configuration.Bind(appSettings);
 string connectionString;
 try
 {
-    connectionString = appSettings.Database.GetEffectiveConnectionString();
+    // Try to get the connection string from the standard ConnectionStrings section
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        // Fallback to AppSettings components if available
+        connectionString = appSettings.Database.GetEffectiveConnectionString();
+    }
 }
 catch (InvalidOperationException)
 {
@@ -31,7 +38,7 @@ catch (InvalidOperationException)
     {
         throw new InvalidOperationException(
             "Database connection string is required. Provide either:\n" +
-            "1. Full connection string in Database:ConnectionString\n" +
+            "1. Full connection string in ConnectionStrings:DefaultConnection\n" +
             "2. Individual components (Database:Host, Database:Database, Database:Username, Database:Password)\n" +
             "3. DATABASE_URL environment variable");
     }
@@ -139,7 +146,7 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "OC Stock API v1");
-    c.RoutePrefix = string.Empty; // Serve Swagger UI at the app's root (/)
+    c.RoutePrefix = "swagger"; // Serve Swagger UI at /swagger instead of root
     c.DocumentTitle = "OC Stock API Documentation";
     c.DisplayRequestDuration();
     

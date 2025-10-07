@@ -30,10 +30,10 @@ namespace OcStockAPI.Actions
 
             try
             {
-                
-                int deletedCount = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ExecuteDeleteAsync(
-                    _dbContext.StockHistories.Where(sh => sh.Timestamp < ninetyDaysAgo), 
-                    cancellationToken);
+                // Use ExecuteDeleteAsync for efficient bulk deletion (EF Core 7.0+)
+                int deletedCount = await _dbContext.StockHistories
+                    .Where(sh => sh.Timestamp < ninetyDaysAgo)
+                    .ExecuteDeleteAsync(cancellationToken);
 
                 if (deletedCount > 0)
                 {
@@ -63,9 +63,9 @@ namespace OcStockAPI.Actions
             try
             {
                 // Use ExecuteDeleteAsync for efficient bulk deletion (EF Core 7.0+)
-                int deletedCount = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ExecuteDeleteAsync(
-                    _dbContext.ApiCallLog.Where(log => log.CallDate < ninetyDaysAgo), 
-                    cancellationToken);
+                int deletedCount = await _dbContext.ApiCallLog
+                    .Where(log => log.CallDate < ninetyDaysAgo)
+                    .ExecuteDeleteAsync(cancellationToken);
 
                 if (deletedCount > 0)
                 {
