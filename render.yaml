@@ -1,0 +1,34 @@
+name: Deploy to Render
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy to Render
+        run: echo "Deployment triggered"
+        # Add actual deployment steps here
+
+services:
+   - type: web
+     name: ocstockapi
+     env: docker
+     plan: free
+     dockerfilePath: ./Dockerfile
+     envVars:
+       - key: ASPNETCORE_ENVIRONMENT
+         value: Production
+       - key: ASPNETCORE_URLS
+         value: http://0.0.0.0:10000
+       - key: PORT
+         value: 10000
+
+#databases:
+#   - name: ocstockapi-db
+#     databaseName: ocstockapi
+#     user: admin
