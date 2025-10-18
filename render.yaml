@@ -22,7 +22,7 @@ services:
       - key: FRONTEND_URL
         sync: false
       - key: AdminUser__Email
-        value: ryguy122000@gmail.com
+        sync: false
       - key: NewsAPI__ApiKey
         sync: false
       - key: Finnhub__ApiKey
