@@ -70,8 +70,17 @@ catch {
 
 # Test 4: Admin Email Configuration
 Write-Host "`n? Test 4: Admin Email Configuration" -ForegroundColor Green
+# NOTE: The User Secrets GUID is project-specific. Set OC_STOCKAPI_USERSECRETS_GUID env var to override.
+$userSecretsGuid = $env:OC_STOCKAPI_USERSECRETS_GUID
+if (-not $userSecretsGuid) {
+    $userSecretsGuid = "34b19657-a738-40c6-a208-06938868a779" # Default for this project
+}
+$secretsPath = "$env:APPDATA\Microsoft\UserSecrets\$userSecretsGuid\secrets.json"
 try {
-    $config = Get-Content "$env:APPDATA\Microsoft\UserSecrets\34b19657-a738-40c6-a208-06938868a779\secrets.json" | ConvertFrom-Json
+    if (-not (Test-Path $secretsPath)) {
+        throw "User secrets file not found at $secretsPath. Set OC_STOCKAPI_USERSECRETS_GUID if needed."
+    }
+    $config = Get-Content $secretsPath | ConvertFrom-Json
     if ($config.AdminUser.Email -eq "ryguy122000@gmail.com") {
         Write-Host "   PASS: Admin email configured correctly ?" -ForegroundColor Green
         Write-Host "   Admin Email: $($config.AdminUser.Email)" -ForegroundColor Yellow
