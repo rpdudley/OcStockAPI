@@ -69,7 +69,7 @@ public class SuperKeyAuthenticationHandler : AuthenticationHandler<SuperKeyAuthe
             var authValue = authHeader.ToString();
             if (authValue.StartsWith("SuperKey ", StringComparison.OrdinalIgnoreCase))
             {
-                var providedKey = authValue.Substring("SuperKey ".Length);
+                var providedKey = authValue.Substring(9);
                 
                 if (providedKey == superKey)
                 {
