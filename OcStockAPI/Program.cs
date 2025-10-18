@@ -117,7 +117,7 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
 
     // Lockout settings - SECURITY: 3 failed attempts = 5 minute lockout
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
-    options.Lockout.MaxFailedAccessAttempts = 3; // Changed from 5 to 3
+    options.Lockout.MaxFailedAccessAttempts = 3; // Set to 3 for enhanced security
     options.Lockout.AllowedForNewUsers = true;
 
     // User settings
