@@ -81,12 +81,16 @@ try {
         throw "User secrets file not found at $secretsPath. Set OC_STOCKAPI_USERSECRETS_GUID if needed."
     }
     $config = Get-Content $secretsPath | ConvertFrom-Json
-    if ($config.AdminUser.Email -eq "ryguy122000@gmail.com") {
+    $expectedAdminEmail = $env:ADMIN_EMAIL
+    if (-not $expectedAdminEmail) {
+        $expectedAdminEmail = "ryguy122000@gmail.com"
+    }
+    if ($config.AdminUser.Email -eq $expectedAdminEmail) {
         Write-Host "   PASS: Admin email configured correctly ?" -ForegroundColor Green
         Write-Host "   Admin Email: $($config.AdminUser.Email)" -ForegroundColor Yellow
         $testsPassed++
     } else {
-        Write-Host "   FAIL: Admin email not configured" -ForegroundColor Red
+        Write-Host "   FAIL: Admin email not configured (expected: $expectedAdminEmail, found: $($config.AdminUser.Email))" -ForegroundColor Red
         $testsFailed++
     }
 }
