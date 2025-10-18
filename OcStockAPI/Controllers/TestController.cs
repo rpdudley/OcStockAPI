@@ -255,10 +255,11 @@ public class TestController : ControllerBase
             try
             {
                 var connectionString = _context.Database.GetConnectionString();
+                const int hostPrefixLength = 5; // Length of "Host="
                 var hostStart = connectionString?.IndexOf("Host=") ?? -1;
                 var hostEnd = connectionString?.IndexOf(";", hostStart) ?? -1;
                 var host = hostStart >= 0 && hostEnd > hostStart 
-                    ? connectionString.Substring(hostStart + 5, hostEnd - hostStart - 5)
+                    ? connectionString.Substring(hostStart + hostPrefixLength, hostEnd - hostStart - hostPrefixLength)
                     : "Unknown";
 
                 ((List<object>)testResults.tests).Add(new
