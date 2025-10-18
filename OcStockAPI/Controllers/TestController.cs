@@ -255,7 +255,7 @@ public class TestController : ControllerBase
             try
             {
                 var connectionString = _context.Database.GetConnectionString();
-                const int hostPrefixLength = 5; // Length of "Host="
+                const int hostPrefixLength = "Host=".Length; // Length of "Host="
                 var hostStart = connectionString?.IndexOf("Host=") ?? -1;
                 var hostEnd = connectionString?.IndexOf(";", hostStart) ?? -1;
                 var host = hostStart >= 0 && hostEnd > hostStart 
