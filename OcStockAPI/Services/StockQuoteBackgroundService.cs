@@ -2,7 +2,6 @@ using OcStockAPI.Actions;
 using OcStockAPI.DataContext;
 using OcStockAPI.Entities;
 using OcStockAPI.Helpers;
-using OcStockAPI.Services;
 using static OcStockAPI.Services.AlphaVantageService;
 
 namespace OcStockAPI.Services
@@ -64,7 +63,7 @@ namespace OcStockAPI.Services
                         if (!marketStatus.isOpen)
                         {
                             int processedCount = 0;
-                            int maxDailyCalls = 20; // Reserve 5 calls for other services
+                            int maxDailyCalls = 20; 
 
                             foreach (var trackedStock in trackedStocks)
                             {

@@ -1,34 +1,31 @@
-name: Deploy to Render
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Deploy to Render
-        run: echo "Deployment triggered"
-        # Add actual deployment steps here
-
+# Render Blueprint for OC Stock API
 services:
-   - type: web
-     name: ocstockapi
-     env: docker
-     plan: free
-     dockerfilePath: ./Dockerfile
-     envVars:
-       - key: ASPNETCORE_ENVIRONMENT
-         value: Production
-       - key: ASPNETCORE_URLS
-         value: http://0.0.0.0:10000
-       - key: PORT
-         value: 10000
-
-#databases:
-#   - name: ocstockapi-db
-#     databaseName: ocstockapi
-#     user: admin
+  - type: web
+    name: ocstockapi
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:$PORT
+      - key: PORT
+        value: 10000
+      # Add these via Render Dashboard (sync: false means set manually)
+      - key: JwtSettings__SecretKey
+        sync: false
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: AdminUser__Email
+        value: ryguy122000@gmail.com
+      - key: NewsAPI__ApiKey
+        sync: false
+      - key: Finnhub__ApiKey
+        sync: false
+      - key: AlphaVantage__ApiKey
+        sync: false
