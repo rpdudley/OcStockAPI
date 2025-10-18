@@ -15,5 +15,13 @@ public class InvestorAccount
 
     [Column("name")]
     public string Name { get; set; }
+    
+    // Foreign key to ApplicationUser
+    [Column("user_id")]
+    public int? UserId { get; set; }
+    
+    // Navigation property
+    public virtual ApplicationUser? User { get; set; }
+    
     public ICollection<Portfolio> Portfolios { get; set; }
 }

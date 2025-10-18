@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using OcStockAPI.Entities;
 using OcStockAPI.Entities.Settings;
+using OcStockAPI.Entities.Identity;
 
 namespace OcStockAPI.DataContext
 {
@@ -19,11 +22,13 @@ namespace OcStockAPI.DataContext
         DbSet<EventMutualFund> EventMutualFunds { get; set; }
         DbSet<TrackedStock> TrackedStocks { get; set; }
         DbSet<ApiCallLog> ApiCallLog { get; set; }
+        DbSet<ApplicationUser> Users { get; set; }
+        DbSet<ApplicationRole> Roles { get; set; }
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }
 
-    public class OcStockDbContext : DbContext, IOcStockDbContext
+    public class OcStockDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, int>, IOcStockDbContext
     {
         public OcStockDbContext(DbContextOptions<OcStockDbContext> options) : base(options)
         {
@@ -42,10 +47,23 @@ namespace OcStockAPI.DataContext
         public DbSet<EventMutualFund> EventMutualFunds { get; set; }
         public DbSet<TrackedStock> TrackedStocks { get; set; }
         public DbSet<ApiCallLog> ApiCallLog { get; set; }
+        
+        // Identity entities (inherited from IdentityDbContext)
+        public override DbSet<ApplicationUser> Users { get; set; }
+        public override DbSet<ApplicationRole> Roles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Configure Identity table names to use our preferred naming convention
+            modelBuilder.Entity<ApplicationUser>().ToTable("Users");
+            modelBuilder.Entity<ApplicationRole>().ToTable("Roles");
+            modelBuilder.Entity<IdentityUserClaim<int>>().ToTable("UserClaims");
+            modelBuilder.Entity<IdentityUserLogin<int>>().ToTable("UserLogins");
+            modelBuilder.Entity<IdentityUserToken<int>>().ToTable("UserTokens");
+            modelBuilder.Entity<IdentityRoleClaim<int>>().ToTable("RoleClaims");
+            modelBuilder.Entity<IdentityUserRole<int>>().ToTable("UserRoles");
 
             // Composite keys for many-to-many relationships
             modelBuilder.Entity<PortfolioMutualFund>()
@@ -59,6 +77,13 @@ namespace OcStockAPI.DataContext
 
             modelBuilder.Entity<EventMutualFund>()
                 .HasKey(em => new { em.EventId, em.MutualFundId });
+
+            // Configure relationships
+            modelBuilder.Entity<InvestorAccount>()
+                .HasOne(ia => ia.User)
+                .WithMany(u => u.InvestorAccounts)
+                .HasForeignKey(ia => ia.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<Stock>()
                 .HasOne(s => s.TrackedStock)
@@ -93,7 +118,6 @@ namespace OcStockAPI.DataContext
                 .WithMany(s => s.EventStocks)
                 .HasForeignKey(es => es.StockId)
                 .OnDelete(DeleteBehavior.Cascade);
-
         }
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

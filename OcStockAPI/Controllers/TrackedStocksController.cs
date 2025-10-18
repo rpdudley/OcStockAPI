@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using OcStockAPI.Services;
 using OcStockAPI.DTOs;
 using Swashbuckle.AspNetCore.Annotations;
@@ -8,6 +9,8 @@ namespace OcStockAPI.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
+    [Authorize] // Require authentication for all endpoints
+    [SwaggerTag("Tracked stocks management - requires authentication")]
     public class TrackedStocksController : ControllerBase
     {
         private readonly ITrackedStockService _trackedStockService;
