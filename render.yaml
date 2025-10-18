@@ -11,7 +11,7 @@ services:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
       - key: ASPNETCORE_URLS
-        value: http://0.0.0.0:$PORT
+        value: http://0.0.0.0:${PORT}
       - key: PORT
         value: 10000
       # Add these via Render Dashboard (sync: false means set manually)
