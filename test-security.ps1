@@ -98,7 +98,11 @@ catch {
 # Test 5: JWT Secret Not in appsettings.json
 Write-Host "`n? Test 5: JWT Secret Security" -ForegroundColor Green
 try {
-    $appsettings = Get-Content "D:\DatabaseProjectAPI\OcStockAPI\appsettings.json" | ConvertFrom-Json
+    $appsettingsPath = $env:APPSETTINGS_PATH
+    if ([string]::IsNullOrEmpty($appsettingsPath)) {
+        $appsettingsPath = ".\appsettings.json"
+    }
+    $appsettings = Get-Content $appsettingsPath | ConvertFrom-Json
     if ([string]::IsNullOrEmpty($appsettings.JwtSettings.SecretKey)) {
         Write-Host "   PASS: JWT secret not in appsettings.json ?" -ForegroundColor Green
         $testsPassed++
