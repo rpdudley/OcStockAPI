@@ -512,3 +512,10 @@ test-results/
 *.backup
 *-backup
 *.old
+
+# Security test scripts with hardcoded credentials
+test-security.ps1
+
+# Or more broadly, ignore all test scripts with secrets:
+test-*.ps1
+*-security.ps1
