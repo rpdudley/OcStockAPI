@@ -1,4 +1,5 @@
 using OcStockAPI.DTOs.Auth;
+using OcStockAPI.Services.Email;
 
 namespace OcStockAPI.Services.Auth;
 
@@ -23,6 +24,7 @@ public class AuthService : IAuthService
     private readonly IJwtService _jwtService;
     private readonly ILogger<AuthService> _logger;
     private readonly IConfiguration _configuration;
+    private readonly IEmailService _emailService;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -30,7 +32,8 @@ public class AuthService : IAuthService
         RoleManager<ApplicationRole> roleManager,
         IJwtService jwtService,
         ILogger<AuthService> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IEmailService emailService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -38,6 +41,7 @@ public class AuthService : IAuthService
         _jwtService = jwtService;
         _logger = logger;
         _configuration = configuration;
+        _emailService = emailService;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto)
@@ -79,6 +83,16 @@ public class AuthService : IAuthService
 
             // Assign default role
             await _userManager.AddToRoleAsync(user, "User");
+
+            // Send welcome email (don't fail registration if email fails)
+            try
+            {
+                await _emailService.SendWelcomeEmailAsync(user.Email, user.FullName);
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogWarning(emailEx, "Failed to send welcome email to {Email}", user.Email);
+            }
 
             // Generate token
             var roles = await _userManager.GetRolesAsync(user);
@@ -250,7 +264,8 @@ public class AuthService : IAuthService
             var user = await _userManager.FindByEmailAsync(forgotPasswordDto.Email);
             if (user == null)
             {
-                // Don't reveal that the user doesn't exist
+                // Don't reveal that the user doesn't exist - security best practice
+                _logger.LogInformation("Password reset requested for non-existent email: {Email}", forgotPasswordDto.Email);
                 return new AuthResponseDto
                 {
                     Success = true,
@@ -260,9 +275,28 @@ public class AuthService : IAuthService
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             
-            // TODO: Send email with reset link
-            // For now, just log the token (in production, you'd send this via email)
-            _logger.LogInformation("Password reset token for {Email}: {Token}", forgotPasswordDto.Email, token);
+            // Send password reset email
+            try
+            {
+                var emailSent = await _emailService.SendPasswordResetEmailAsync(user.Email, token, user.FullName);
+                
+                if (emailSent)
+                {
+                    _logger.LogInformation("Password reset email sent successfully to {Email}", forgotPasswordDto.Email);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to send password reset email to {Email} - email service may not be configured", forgotPasswordDto.Email);
+                    // Log token for development/debugging (remove in production)
+                    _logger.LogInformation("Password reset token for {Email}: {Token}", forgotPasswordDto.Email, token);
+                }
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogError(emailEx, "Error sending password reset email to {Email}", forgotPasswordDto.Email);
+                // Log token as fallback
+                _logger.LogInformation("Password reset token for {Email}: {Token}", forgotPasswordDto.Email, token);
+            }
 
             return new AuthResponseDto
             {

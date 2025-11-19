@@ -1,9 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
 using OcStockAPI.Entities;
 using OcStockAPI.Entities.Settings;
-using OcStockAPI.Entities.Identity;
 
 namespace OcStockAPI.DataContext
 {

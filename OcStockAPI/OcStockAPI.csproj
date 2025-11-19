@@ -29,8 +29,4 @@
     <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="9.0.5" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="wwwroot\" />
-  </ItemGroup>
-
 </Project>

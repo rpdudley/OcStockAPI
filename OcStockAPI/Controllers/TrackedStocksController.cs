@@ -9,8 +9,12 @@ namespace OcStockAPI.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
-    [Authorize] // Require authentication for all endpoints
-    [SwaggerTag("Tracked stocks management - requires authentication")]
+#if DEBUG
+    [AllowAnonymous] // Development: Allow anonymous access for testing
+#else
+    [Authorize] // Production: Require authentication
+#endif
+    [SwaggerTag("Tracked stocks management")]
     public class TrackedStocksController : ControllerBase
     {
         private readonly ITrackedStockService _trackedStockService;
